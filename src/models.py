@@ -51,12 +51,14 @@ class RobertaMultihead(nn.Module):
             "mask_cand_input": (batch_cand_count, seq_len)
             for MC prediction
             "cand_matching_idx": (bs, max_cands), between [-1, batch_cand_count)
-            for P and MC prediction
-            "label": (bs,)
+            for P loss
+            "p_label": (bs,)
+            for MC loss
+            "mc_label": (bs,), between [0, max_cands]
         batch_outputs:
             "loss": (1,)
             "acc": (1,)
-            "label_pred": (bs,)
+            "query_pred": (bs,)
         """
         if "-SPAN-" in self.framing:
             assert self.framing.startswith("P-")
@@ -110,10 +112,38 @@ class RobertaMultihead(nn.Module):
             )
             # cand_logits: (bs, max_cands)
 
-        label = batch_inputs["label"]
-        if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
-            loss = F.binary_cross_entropy_with_logits(query_logits, label, reduction="mean")
-        elif self.framing in ["MC-SENT-NOSCALE", "MC-SENT-NOPAIR", "MC-SENT"]:
+        if self.train:
+            if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
+                loss = F.binary_cross_entropy_with_logits(query_logits, batch_inputs["p_label"])
+            elif self.framing in ["MC-SENT", "MC-MLM"]:
+                loss = F.cross_entropy(
+                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits], dim=1),
+                    batch_inputs["mc_label"],
+                )
+            elif self.framing == "MC-SENT-NOSCALE":
+                concat_logits = (
+                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
+                ).flatten()
+                one_hot_label = (
+                    torch.zeros_like(concat_logits)
+                    .scatter_(dim=1, index=batch_inputs["mc_label"], src=1)
+                    .flatten()
+                )
+                non_padding_mask = concat_logits != self.padding_logits
+                loss = F.binary_cross_entropy_with_logits(
+                    concat_logits[non_padding_mask], one_hot_label[non_padding_mask]
+                )
+            elif self.framing == "MC-SENT-NOPAIR":
+                loss = F.cross_entropy(
+                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
+                    batch_inputs["mc_label"],
+                )
 
-        batch_outputs = {"loss": loss, "label_pred": label_pred, "acc": acc}
+        if self.framing.startswith("P-"):
+            query_pred = query_logits > 0
+        elif self.framing.startswith("MC-"):
+            query_pred = query_logits > (cand_logits.max(dim=1)[0])
+        acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
+        batch_outputs = {"loss": loss, "label_pred": query_pred, "acc": acc}
+        return batch_outputs
