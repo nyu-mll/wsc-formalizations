@@ -48,8 +48,8 @@ def main():
         model, optimizer = amp.initialize(model, trainer.optimizer, opt_level="O1")
 
     # load model
-    if cfg.load_model_state != "":
-        trainer.load_model(cfg.load_model_state)
+    if cfg.load_model_ckpt != "":
+        trainer.load_model(cfg.load_model_ckpt)
 
     # run trainer
     if cfg.mode == "train":

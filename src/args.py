@@ -12,8 +12,8 @@ parser.add_argument("--results-dir", type=str, default=os.getenv("NLU_DATA_DIR",
 parser.add_argument("--data-dir", type=str, default=os.getenv("NLU_RESULT_DIR", "results/"))
 # mode
 parser.add_argument("--mode", type=str, default="train", choices=["train", "eval"])
-# load model state before training / evaluating
-parser.add_argument("--load-model-state", type=str, default="")
+# load model parameter before training / evaluating
+parser.add_argument("--load-model-ckpt", type=str, default="")
 
 # device settings
 # device
