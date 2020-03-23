@@ -2,40 +2,33 @@ from fairseq_wsc.wsc_utils import wsc_jsonl_iterator
 from fairseq_wsc.wsc_utils import winogrande_jsonl_iterator
 
 
-class Task(object):
-    def __init__(self, dataset, framing):
-        self.dataset = None
-        self.framing = None
+class WSCTypeTask(object):
+    def __init__(self, data_dir, exp_dir, dataset, framing):
+        self.data_dir = data_dir
+        self.exp_dir = exp_dir
+        self.dataset = dataset
+        self.framing = framing
         self.raw_data = None
         self.preprocessed_data = None
         self.iterators = None
+
+        if self.dataset == "winogrande":
+            self.load_winogrande_data()
+        elif self.dataset == "wsc":
+            self.load_wsc_data()
+        self.preprocess_data()
+        self.build_iterators()
+
+    def load_winogrande_data(self):
+        raise NotImplementedError
+
+    def load_wsc_data(self):
+        raise NotImplementedError
 
     def preprocess_data(self):
         raise NotImplementedError
 
     def build_iterators(self):
-        raise NotImplementedError
-
-
-class WinograndeTask(Task):
-    def __init__(self, framing):
-        super().__init__(dataset="winogrande", framing=framing)
-        self.load_raw_data()
-        self.preprocess_data()
-        self.build_iterators()
-
-    def load_raw_data(self):
-        raise NotImplementedError
-
-
-class WSCTask(Task):
-    def __init__(self, framing):
-        super().__init__(dataset="wsc", framing=framing)
-        self.load_raw_data()
-        self.preprocess_data()
-        self.build_iterators()
-
-    def load_raw_data(self):
         raise NotImplementedError
 
 
