@@ -3,11 +3,11 @@ from fairseq_wsc.wsc_utils import winogrande_jsonl_iterator
 
 
 class WSCTypeTask(object):
-    def __init__(self, data_dir, exp_dir, dataset, framing):
-        self.data_dir = data_dir
-        self.exp_dir = exp_dir
-        self.dataset = dataset
+    def __init__(self, framing, dataset, data_dir, cache_dir):
         self.framing = framing
+        self.dataset = dataset
+        self.data_dir = data_dir
+        self.cache_dir = cache_dir
         self.raw_data = None
         self.preprocessed_data = None
         self.iterators = None
@@ -29,6 +29,9 @@ class WSCTypeTask(object):
         raise NotImplementedError
 
     def build_iterators(self):
+        raise NotImplementedError
+
+    def write_pred(self, pred):
         raise NotImplementedError
 
 

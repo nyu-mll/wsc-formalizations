@@ -5,7 +5,7 @@ import transformers
 
 
 class WSCVariantModel(nn.Module):
-    def __init__(self, framing, pretrained="roberta-large"):
+    def __init__(self, framing, pretrained, cache_dir):
         """
         framing, one of
             "P-SPAN"
