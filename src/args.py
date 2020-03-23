@@ -18,8 +18,6 @@ parser.add_argument("--load-model-state", type=str, default="")
 # device settings
 # device
 parser.add_argument("--device", type=str, default="cuda", choices=["cpu", "cuda"])
-# data parallel
-parser.add_argument("--dp", type=bool, action="store_false")
 # mixed precision
 parser.add_argument("--amp", type=bool, action="store_false")
 
@@ -75,6 +73,5 @@ parser.add_argument(
 
 def check_config(cfg):
     if cfg.device == "cpu":
-        cfg.dp = False
         cfg.amp = False
     assert cfg.val_interval_iters % cfg.report_interval_iters == 0
