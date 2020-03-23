@@ -1,3 +1,3 @@
-from models import RobertaWSCModel
+from models import WSCVariantModel
 from tasks import WSCLikeTask
 

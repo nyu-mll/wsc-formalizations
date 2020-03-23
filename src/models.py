@@ -4,8 +4,8 @@ import torch.nn.functional as F
 import transformers
 
 
-class RobertaWSCModel(nn.Module):
-    def __init__(self, framing, roberta_model="roberta-large"):
+class WSCVariantModel(nn.Module):
+    def __init__(self, framing, pretrained="roberta-large"):
         """
         framing, one of
             "P-SPAN"
@@ -20,11 +20,11 @@ class RobertaWSCModel(nn.Module):
 
         self.pad_logits = -100
 
-        self.tokenizer = transformers.RobertaTokenizer.from_pretrained(roberta_model)
+        self.tokenizer = transformers.RobertaTokenizer.from_pretrained(pretrained)
         self.mask_token_id = self.tokenizer.mask_token_id
         self.pad_token_id = self.tokenizer.pad_token_id
 
-        transformer_with_lm = transformers.RobertaForMaskedLM.from_pretrained(roberta_model)
+        transformer_with_lm = transformers.RobertaForMaskedLM.from_pretrained(pretrained)
         self.hidden_size = transformer_with_lm.config.hidden_size
         self.framing = framing
 
