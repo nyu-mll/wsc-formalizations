@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import transformers
 
 
-class RobertaMultiheadModel(nn.Module):
+class RobertaWSCModel(nn.Module):
     def __init__(self, framing, roberta_model="roberta-large"):
         """
         framing, one of
