@@ -1,0 +1,79 @@
+import argparse
+import os
+
+parser = argparse.ArgumentParser(description="WSC Trick Experiments")
+
+
+# basic settings
+# experiment name
+parser.add_argument("--exp-name", type=str, default="debug")
+# directory to save results, cached data, model states
+parser.add_argument("--results-dir", type=str, default="data/")
+# directory in which data are stored
+parser.add_argument("--data-dir", type=str, default="results/")
+# mode
+parser.add_argument("--mode", type=str, default="train", choices=["train", "eval"])
+# load model state before training / evaluating
+parser.add_argument("--load-model-state", type=str, default="")
+
+# device settings
+# device
+parser.add_argument("--device", type=str, default="cuda", choices=["cpu", "cuda"])
+# data parallel
+parser.add_argument("--dp", type=bool, action="store_false")
+# mixed precision
+parser.add_argument("--amp", type=bool, action="store_false")
+
+
+# data settings
+# neglect cached data and reload
+parser.add_argument("--reload-data", type=bool, action="store_true")
+# dataset
+parser.add_argument("--dataset", type=str, choices=["wsc", "winogrande"])
+# framing
+parser.add_argument(
+    "--framing",
+    type=str,
+    choices=[
+        "P-SPAN",
+        "P-SENT",
+        "MC-SENT-PLOSS",
+        "MC-SENT-NOSCALE",
+        "MC-SENT-NOPAIR",
+        "MC-SENT",
+        "MC-MLM",
+    ],
+)
+
+# training settings
+# batch size
+parser.add_argument("--bs", type=int, default=32)
+# learning rate
+parser.add_argument("--lr", type=float, default=1e-5)
+# weight decay
+parser.add_argument("--weight-decay", type=float, default=1e-3)
+# number of epochs
+parser.add_argument("--num_epochs", type=int, default=10)
+# propotion of warmup iters to full training process
+parser.add_argument("--warmup-iters-proportion", type=float, default=0.05)
+# number of iterations between validation
+parser.add_argument("--val-interval-iters", type=int, default=1000)
+# number of iterations between reporting result
+parser.add_argument("--report-interval-iters", type=int, default=200)
+
+
+# model settings
+# which transformer model to use
+parser.add_argument(
+    "--pretrained",
+    type=str,
+    default="roberta-large",
+    choices=["roberta-base", "roberta-large", "albert-base-v2", "albert-xxlarge-v2"],
+)
+
+
+def cfg_check(cfg):
+    if cfg.device == "cpu":
+        cfg.dp = False
+        cfg.amp = False
+    assert cfg.val_interval_iters % cfg.report_interval_iters == 0
