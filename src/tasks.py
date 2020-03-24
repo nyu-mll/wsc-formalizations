@@ -16,8 +16,6 @@ class WSCTypeTask(object):
             self.load_winogrande_data()
         elif self.dataset == "wsc":
             self.load_wsc_data()
-        self.preprocess_data()
-        self.build_iterators()
 
     def load_winogrande_data(self):
         raise NotImplementedError
@@ -25,10 +23,10 @@ class WSCTypeTask(object):
     def load_wsc_data(self):
         raise NotImplementedError
 
-    def preprocess_data(self):
+    def preprocess_data(self, model):
         raise NotImplementedError
 
-    def build_iterators(self):
+    def build_iterators(self, bs):
         raise NotImplementedError
 
     def write_pred(self, pred):

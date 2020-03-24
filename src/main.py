@@ -40,7 +40,19 @@ def main():
         reload_data=cfg.reload_data,
     )
     model = WSCVariantModel(framing=cfg.framing, pretrained=cfg.pretrained, cache_dir=cfg.cache_dir)
-    trainer = Trainer(model=model, task=task, exp_dir=cfg.exp_dir, cfg=cfg)
+    trainer = Trainer(
+        model=model,
+        task=task,
+        bs=cfg.bs,
+        lr=cfg.lr,
+        weight_decay=cfg.weight_decay,
+        max_epochs=cfg.max_epochs,
+        warmup_iters_ratio=cfg.warmup_iters_ratio,
+        val_interval_iters=cfg.val_interval_iters,
+        report_interval_iters=cfg.report_interval_iters,
+        stopping_patience=cfg.stopping_patience,
+        exp_dir=cfg.exp_dir,
+    )
 
     # setup device
     model.to(cfg.device)

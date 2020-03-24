@@ -21,6 +21,8 @@ class Trainer:
     ):
         self.task = task
         self.model = model
+        self.task.preprocess_data(model=model)
+        self.task.creat_iterators(bs=bs)
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
             self.optimizer,

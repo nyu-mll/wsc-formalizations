@@ -20,11 +20,17 @@ class WSCVariantModel(nn.Module):
 
         self.pad_logits = -100
 
-        self.tokenizer = transformers.RobertaTokenizer.from_pretrained(pretrained)
+        self.tokenizer = transformers.RobertaTokenizer.from_pretrained(
+            pretrained, cache_dir=cache_dir
+        )
+        self.cls_token_id = self.tokenizer.cls_token_id
+        self.sep_token_id = self.tokenizer.sep_token_id
         self.mask_token_id = self.tokenizer.mask_token_id
         self.pad_token_id = self.tokenizer.pad_token_id
 
-        transformer_with_lm = transformers.RobertaForMaskedLM.from_pretrained(pretrained)
+        transformer_with_lm = transformers.RobertaForMaskedLM.from_pretrained(
+            pretrained, cache_dir=cache_dir
+        )
         self.hidden_size = transformer_with_lm.config.hidden_size
         self.framing = framing
 
