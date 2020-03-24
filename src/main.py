@@ -20,6 +20,7 @@ def main():
     # setup logging
     config_logging(os.path.join(cfg.exp_dir, f"{cfg.mode}.log"))
     log.info(f"Experiment {cfg.exp_name}_{cfg.mode}")
+    log.info(f"{cfg}")
 
     # setup results
     cfg.exp_dir = os.path.join(cfg.results_dir, cfg.exp_name)
