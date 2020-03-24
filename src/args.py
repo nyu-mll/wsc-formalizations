@@ -50,14 +50,14 @@ parser.add_argument("--lr", type=float, default=1e-5)
 # weight decay
 parser.add_argument("--weight-decay", type=float, default=1e-3)
 # number of epochs
-parser.add_argument("--num-epochs", type=int, default=10)
-# propotion of warmup iters to full training process
-parser.add_argument("--warmup-iters-proportion", type=float, default=0.05)
+parser.add_argument("--max-epochs", type=int, default=10)
+# ratio of warmup iters to full training process
+parser.add_argument("--warmup-iters-ratio", type=float, default=0.06)
 # number of iterations between validation
 parser.add_argument("--val-interval-iters", type=int, default=1000)
 # number of iterations between reporting result
 parser.add_argument("--report-interval-iters", type=int, default=200)
-# number of validations waiting for better results before stopping
+# number of validations waiting for better results before stopping, set to -1 to disable
 parser.add_argument("--stopping-patience", type=int, default=-1)
 
 
@@ -74,4 +74,3 @@ parser.add_argument(
 def check_config(cfg):
     if cfg.device == "cpu":
         cfg.amp = False
-    assert cfg.val_interval_iters % cfg.report_interval_iters == 0
