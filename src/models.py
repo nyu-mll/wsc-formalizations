@@ -11,8 +11,8 @@ class WSCVariantModel(nn.Module):
             "P-SPAN"
             "P-SENT"
             "MC-SENT-PLOSS"
-            "MC-SENT-NOSCALE"
-            "MC-SENT-NOPAIR"
+            "MC-SENT-PAIR"
+            "MC-SENT-SCALE"
             "MC-SENT"
             "MC-MLM"
         """
@@ -121,7 +121,7 @@ class WSCVariantModel(nn.Module):
                     torch.cat([query_logits.unsqueeze(dim=1), cand_logits], dim=1),
                     batch_inputs["mc_label"],
                 )
-            elif self.framing == "MC-SENT-NOSCALE":
+            elif self.framing == "MC-SENT-PAIR":
                 concat_logits = (
                     torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
                 ).flatten()
@@ -134,7 +134,7 @@ class WSCVariantModel(nn.Module):
                 loss = F.binary_cross_entropy_with_logits(
                     concat_logits[non_pad_mask], one_hot_label[non_pad_mask]
                 )
-            elif self.framing == "MC-SENT-NOPAIR":
+            elif self.framing == "MC-SENT-SCALE":
                 loss = F.cross_entropy(
                     torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
                     batch_inputs["mc_label"],
