@@ -35,9 +35,9 @@ def main():
     task = WSCLikeTask(
         framing=cfg.framing,
         dataset=cfg.dataset,
+        reload_data=cfg.reload_data,
         data_dir=cfg.data_dir,
         cache_dir=cfg.cache_dir,
-        reload_data=cfg.reload_data,
     )
     model = WSCVariantModel(framing=cfg.framing, pretrained=cfg.pretrained, cache_dir=cfg.cache_dir)
     trainer = Trainer(
