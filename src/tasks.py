@@ -1,7 +1,11 @@
 import os
 import pickle
-from fairseq_wsc.wsc_utils import wsc_jsonl_iterator
-from fairseq_wsc.wsc_utils import winogrande_jsonl_iterator
+from fairseq_wsc.wsc_utils import (
+    wsc_jsonl_iterator,
+    winogrande_jsonl_iterator,
+    filter_noun_chunks,
+    extended_noun_chunks,
+)
 
 
 class WSCTypeTask(object):
@@ -29,9 +33,60 @@ class WSCTypeTask(object):
 
     def load_wsc_data(self):
         def load_wsc_split(filename, split):
+            data_pack = {
+                "prefix": [],
+                "suffix": [],
+                "leading_space": [],
+                "trailing_space": [],
+                "query": [],
+                "candidate": [],
+                "p_label": [],
+                "mc_label": [],
+            }
+
+            record = {}
+            sentences = []
+
             split_file = os.path.join(self.data_dir, "WSC", filename)
             for sentence, pronoun_span, query, label in wsc_jsonl_iterator(split_file):
-                pass
+                data_pack["prefix"].append(sentence[: pronoun_span.start].text)
+                data_pack["suffix"].append(sentence[pronoun_span.end :].text_with_ws)
+                # spaCy spans include trailing spaces, but we need to know about
+                # leading spaces for the GPT-2 BPE
+                data_pack["leading_space"].append(
+                    " " if sentence[: pronoun_span.start].text_with_ws.endswith(" ") else ""
+                )
+                data_pack["trailing_space"].append(
+                    " " if pronoun_span.text_with_ws.endswith(" ") else ""
+                )
+                # get noun phrases, excluding pronouns and anything overlapping with the query
+                cand_spans = filter_noun_chunks(
+                    extended_noun_chunks(sentence),
+                    exclude_pronouns=True,
+                    exclude_query=query,
+                    exact_match=False,
+                )
+
+                data_pack["query"].append(query)
+                data_pack["candidate"].append([cand_span.text for cand_span in cand_spans])
+                data_pack["p_label"].append(int(label))
+                if split != "test":
+                    sentences.append(sentence.text)
+                    if label:
+                        record[sentence.text] == query
+                else:
+                    data_pack["mc_label"].append(0)
+
+            for i, sentence in enumerate(sentences):
+                if sentence in record:
+                    correct = record["sentence"]
+                    data_pack["mc_label"].append(
+                        ([data_pack["query"][i]] + data_pack["candidate"][i]).index(correct)
+                    )
+                else:
+                    data_pack["mc_label"].append(-1)
+
+            return data_pack
 
         self.raw_data = {
             "train": load_wsc_split("train.jsonl", "train"),
@@ -41,9 +96,41 @@ class WSCTypeTask(object):
 
     def load_winogrande_data(self):
         def load_winogrande_split(filename, split):
+            data_pack = {
+                "prefix": [],
+                "suffix": [],
+                "leading_space": [],
+                "trailing_space": [],
+                "query": [],
+                "candidate": [],
+                "p_label": [],
+                "mc_label": [],
+            }
+
             split_file = os.path.join(self.data_dir, "Winogrande", filename)
             for sentence, pronoun_span, query, cand_text in winogrande_jsonl_iterator(split_file):
-                pass
+                data_pack["prefix"].append(sentence[: pronoun_span[0]].rstrip())
+                data_pack["suffix"].append(sentence[pronoun_span[1] :])
+                data_pack["leading_space"].append(
+                    " " if sentence[: pronoun_span[0]].endswith(" ") else ""
+                )
+                data_pack["trailing_space"].append("")
+                data_pack["query"].append(query)
+                data_pack["candidate"].append([cand_text])
+                data_pack["p_label"].append(1)
+                data_pack["mc_label"].append(0)
+                if split != "test":
+                    data_pack["prefix"].append(sentence[: pronoun_span[0]].rstrip())
+                    data_pack["suffix"].append(sentence[pronoun_span[1] :])
+                    data_pack["leading_space"].append(
+                        " " if sentence[: pronoun_span[0]].endswith(" ") else ""
+                    )
+                    data_pack["trailing_space"].append("")
+                    data_pack["query"].append(cand_text)
+                    data_pack["candidate"].append([query])
+                    data_pack["p_label"].append(0)
+                    data_pack["mc_label"].append(1)
+            return data_pack
 
         training_size = self.dataset.split("_")[-1]
         self.raw_data = {
