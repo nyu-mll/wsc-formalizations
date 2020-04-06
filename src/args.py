@@ -26,7 +26,19 @@ parser.add_argument("--amp", type=bool, action="store_false")
 # neglect cached data and reload
 parser.add_argument("--reload-data", type=bool, action="store_true")
 # dataset
-parser.add_argument("--dataset", type=str, choices=["wsc", "winogrande"])
+parser.add_argument(
+    "--dataset",
+    type=str,
+    choices=[
+        "wsc-spacy",
+        "wsc-cross",
+        "winogrande-xs",
+        "winogrande-s",
+        "winogrande-m",
+        "winogrande-l",
+        "winogrande-xl",
+    ],
+)
 # framing
 parser.add_argument(
     "--framing",
