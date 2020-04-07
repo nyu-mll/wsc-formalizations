@@ -2,12 +2,36 @@ import os
 import pickle
 import logging as log
 import json
+import torch
 from fairseq_wsc.wsc_utils import (
     filter_noun_chunks,
     extended_noun_chunks,
     get_detokenizer,
     get_spacy_nlp,
 )
+
+
+class DictionaryDataset(torch.utils.data.Dataset):
+    def __init__(self, data_dict):
+        super().__init__()
+        self.data_dict = data_dict
+        self.size = len(self.data_dict.values()[0])
+
+    def __getitem__(self, index):
+        return {key: value[index] for key, value in self.data_dict.items()}
+
+    def __len__(self):
+        return self.size
+
+
+def data_dict_collate_fn(entries):
+    batch_inputs = {}
+    for key in entries[0]:
+        batch_values = [entry[key] for entry in entries]
+        if isinstance(batch_values[0]):
+            batch_values = torch.stack(batch_values, dim=0)
+        batch_inputs[key] = batch_values
+    return batch_inputs
 
 
 def strip_punc(x):
@@ -65,15 +89,21 @@ class WSCTypeTask(object):
 
         cache_file = os.path.join(self.cache_dir, f"{self.dataset}.pkl")
         if os.path.exist(cache_file):
+            log.info(f"loading cached raw data from {cache_file}")
             with open(cache_file, "rb") as f:
                 self.raw_data = pickle.load(f)
         else:
+            log.info(f"loading data from {self.dataset} dataset")
             if self.dataset.startwith("winogrande"):
                 self.load_winogrande_data()
             elif self.dataset.startwith("wsc"):
                 self.load_wsc_data()
             with open(cache_file, "wb") as f:
                 pickle.dump(self.raw_data, f)
+
+        log.info("display 5 examples")
+        for i, example in enumerate(self.raw_data["train"][:5]):
+            log.info(f"example {i}\n{str(example)}")
 
     def load_wsc_data(self):
         wsc_candidates = self.dataset.split("_")[-1]
@@ -203,15 +233,185 @@ class WSCTypeTask(object):
         }
 
     def preprocess_data(self, model):
-        # TODO
-        # add tokenize and aligned to tokenized span
-        # remove instances accordingly
-        # pad the input
-        # convert to tensors
-        raise NotImplementedError
+        tokenizer = model.tokenizer
+        perproc_cache_file = os.path.join(
+            self.cache_dir, f"{self.dataset}-{model.framing}-{model.pretrained}.pt"
+        )
+        if os.path.exists(perproc_cache_file):
+            log.info(f"loading cached preprocessed data from {perproc_cache_file}")
+            self.preprocessed_data = torch.load(perproc_cache_file)
+
+        else:
+            log.info(f"preprocess data as {model.framing}-{model.pretrained}")
+            self.preprocessed_data = {}
+
+            def realign_span(text, span):
+                text_tokens = tokenizer.tokenize(text)["input_ids"]
+                prefix_tokens = tokenizer.tokenize(text[: span[0]])["input_ids"]
+                prefix_and_span_tokens = tokenizer.tokenize(text[: span[1]])["input_ids"]
+                token_span = (
+                    shared_length(text_tokens, prefix_tokens),
+                    len(prefix_and_span_tokens) - 1,
+                )
+                return text_tokens, token_span
+
+            def char_span_to_mask(text, span):
+                text_tokens, token_span = realign_span(text, span)
+                mask = [0] * len(text_tokens)
+                for idx in range(*token_span):
+                    mask[idx] = 1
+                return mask
+
+            def replace_span(text, span, insert_text):
+                new_span = (span[0], span[0] + len(insert_text))
+                new_text = (text[: span[0]] + insert_text + text[span[1] :],)
+                return new_text, new_span
+
+            def add_mask_tokens(text_tokens, token_span):
+                masked_text_tokens = [token for token in text_tokens]
+                for idx in range(token_span):
+                    masked_text_tokens[idx] = tokenizer.mask_token_id
+                return text_tokens, masked_text_tokens
+
+            for split, examples in self.raw_data.items():
+                data = {
+                    "uid": [],
+                    "raw_input": [],
+                    "span1_mask": [],
+                    "span2_mask": [],
+                    "query_input": [],
+                    "cand_input": [],
+                    "mask_query_input": [],
+                    "mask_cand_input": [],
+                    "p_label": [],
+                    "mc_label": [],
+                }
+                for example in examples:
+                    data["uid"].append(example["uid"])
+                    data["raw_input"].append(tokenizer.tokenize(example["text"])["input_ids"])
+                    data["span1_mask"].append(
+                        char_span_to_mask(example["text"], example["query_char_span"])
+                    )
+                    data["span2_mask"].append(
+                        char_span_to_mask(example["text"], example["pronoun_char_span"])
+                    )
+                    query_input, mask_query_input = add_mask_tokens(
+                        *realign_span(
+                            *replace_span(
+                                example["text"], example["pronoun_char_span"], example["query_text"]
+                            )
+                        )
+                    )
+                    data["query_input"].append(query_input)
+                    data["mask_query_input"].append(mask_query_input)
+                    cand_input, mask_cand_input = zip(
+                        *[
+                            add_mask_tokens(
+                                *realign_span(
+                                    *replace_span(
+                                        example["text"], example["pronoun_char_span"], cand_text
+                                    )
+                                )
+                            )
+                            for cand_text in example["cand_text_list"]
+                        ]
+                    )
+                    data["cand_input"].append(cand_input)
+                    data["mask_cand_input"].append(mask_cand_input)
+                    data["p_label"].append(example["p_label"])
+                    data["mc_label"].append(example["mc_label"])
+
+                if model.framing == "P-SPAN":
+                    required_domains = ["uid", "raw_input", "span1_mask", "span2_mask", "p_label"]
+                elif model.framing == "P-SENT":
+                    required_domains = ["uid", "query_input", "p_label"]
+                elif model.framing == "MC-SENT-PLOSS":
+                    required_domains = ["uid", "query_input", "cand_input", "p_label"]
+                elif model.framing in ["MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
+                    required_domains = ["uid", "query_input", "cand_input", "p_label", "mc_label"]
+                elif model.framing == "MC-MLM":
+                    required_domains = [
+                        "uid",
+                        "query_input",
+                        "cand_input",
+                        "mask_query_input",
+                        "mask_cand_input",
+                        "p_label",
+                        "mc_label",
+                    ]
+
+                data = {key: value for key, value in data.items() if key in required_domains}
+
+                if split == "train":
+                    if model.framing in ["MC-SENT-PAIR", "MC-SENT", "MC-MLM"]:
+                        kept_examples = data["p_label"]
+                        for key, value in data.items():
+                            data[key] = [value[i] for i, b in enumerate(kept_examples) if b]
+
+                def tensorize(data_list, ndims, dtype, default=None):
+                    if ndims == 1:
+                        data_tensor = torch.tensor(data_list, dtype=dtype)
+                    elif ndims == 2:
+                        max_length = max([len(seq) for seq in data_list])
+                        data_tensor = (
+                            torch.ones((len(data_list), max_length), dtype=dtype) * default
+                        )
+                        for i, seq in enumerate(data_list):
+                            for j, token_id in enumerate(seq):
+                                data_tensor[i, j] = token_id
+                    elif ndims == 3:
+                        max_seqs = max([len(seq_list) for seq_list in data_list])
+                        max_length = max([len(seq) for seq_list in data_list for seq in seq_list])
+                        data_tensor = (
+                            torch.ones((len(data_list), max_seqs, max_length), dtype=dtype)
+                            * default
+                        )
+                        for i, seq_list in enumerate(data_list):
+                            for j, seq in enumerate(seq_list):
+                                for k, token_id in enumerate(seq):
+                                    data_tensor[i, j, k] = token_id
+                    return data_tensor
+
+                for key, value in data:
+                    if key in ["raw_input", "query_input", "mask_query_input"]:
+                        data[key] = tensorize(
+                            value, ndims=2, dtype=torch.long, default=tokenizer.pad_token_id
+                        )
+                    elif key in ["cand_input", "mask_cand_input"]:
+                        data[key] = tensorize(
+                            value, ndims=3, dtype=torch.long, default=tokenizer.pad_token_id
+                        )
+                    elif key in ["p_label", "mc_label"]:
+                        data[key] = tensorize(value, ndims=1, dtype=torch.long)
+                    elif key in ["span1_mask", "span2_mask"]:
+                        data[key] = tensorize(value, ndims=2, dtype=torch.float, default=0)
+
+                self.preprocessed_data[split] = data
+
+            torch.save(self.preprocessed_data, perproc_cache_file)
+
+        log.info("display preprocessed fields")
+        for key, value in enumerate(self.preprocessed_data["train"]):
+            log.info(
+                f"{key}: "
+                f"{value.dtype, value.size() if isinstance(value, torch.Tensor) else len(value)}\n"
+                f"{str(value[:5])}"
+            )
 
     def build_iterators(self, bs):
-        raise NotImplementedError
+
+        self.iterators = {
+            split: torch.utils.data.DataLoader(
+                dataset=DictionaryDataset(data),
+                batch_size=bs,
+                shuffle=(split == "train"),
+                num_workers=4,
+                collate_fn=data_dict_collate_fn,
+                pin_memory=True,
+                drop_last=(split == "train"),
+            )
+            for split, data in self.preprocessed_data
+        }
 
     def write_pred(self, pred):
         raise NotImplementedError

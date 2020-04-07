@@ -23,8 +23,6 @@ class WSCVariantModel(nn.Module):
         self.tokenizer = transformers.RobertaTokenizer.from_pretrained(
             pretrained, cache_dir=cache_dir
         )
-        self.cls_token_id = self.tokenizer.cls_token_id
-        self.sep_token_id = self.tokenizer.sep_token_id
         self.mask_token_id = self.tokenizer.mask_token_id
         self.pad_token_id = self.tokenizer.pad_token_id
 
@@ -32,6 +30,7 @@ class WSCVariantModel(nn.Module):
             pretrained, cache_dir=cache_dir
         )
         self.hidden_size = transformer_with_lm.config.hidden_size
+        self.pretrained = pretrained
         self.framing = framing
 
         self.transformer = transformer_with_lm.roberta
@@ -64,9 +63,14 @@ class WSCVariantModel(nn.Module):
             "acc": (1,)
             "query_pred": (bs,)
         """
+
+        def use_transformer(input_tokens):
+            attention_mask = (input_tokens != self.pad_token_id).float()
+            return self.transformer(input_tokens, attention_mask=attention_mask)
+
         if "-SPAN-" in self.framing:
             assert self.framing.startswith("P-")
-            raw_repr = self.transformer(batch_inputs["raw_input"])
+            raw_repr = use_transformer(batch_inputs["raw_input"])
             cls_repr = raw_repr[:, 0]
             span1_mask = batch_inputs["span1_mask"].unsqueeze(dim=2)
             span1_repr = torch.sum(raw_repr * span1_mask, dim=1) / span1_mask.sum(dim=1)
@@ -77,18 +81,18 @@ class WSCVariantModel(nn.Module):
             query_logits = self.span_head(concat_repr)
 
         elif "-SENT-" in self.framing:
-            query_repr = self.transformer(batch_inputs["query_input"])[:, 0]
+            query_repr = use_transformer(batch_inputs["query_input"])[:, 0]
             query_logits = self.sent_head(query_repr)
 
             if self.framing.startswith("MC-"):
                 valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
                 cand_input = batch_inputs["cand_input"][valid_cand_mask]
-                cand_repr = self.transformer(cand_input)[:, 0]
+                cand_repr = use_transformer(cand_input)[:, 0]
                 cand_logits = self.sent_head(cand_repr)
 
         elif "-MLM-" in self.framing:
             assert self.framing.startswith("MC-")
-            query_repr = self.transformer(batch_inputs["mask_query_input"])
+            query_repr = use_transformer(batch_inputs["mask_query_input"])
             query_prob = torch.gather(
                 F.log_softmax(self.mlm_head(query_repr), dim=2),
                 index=batch_inputs["query_input"].unsqueeze(2),
@@ -101,7 +105,7 @@ class WSCVariantModel(nn.Module):
 
             valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
             mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
-            cand_repr = self.transformer(mask_cand_input)
+            cand_repr = use_transformer(mask_cand_input)
             cand_prob = torch.gather(
                 F.log_softmax(self.mlm_head(cand_repr), dim=2),
                 index=batch_inputs["cand_input"].unsqueeze(2),
