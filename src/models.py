@@ -126,19 +126,19 @@ class WSCReframingModel(nn.Module):
             full_cand_logits[valid_cand_mask] = cand_logits
             # full_cand_logits: (bs, max_cands)
 
-        if self.train:
+        if self.training:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
                 loss = F.binary_cross_entropy(
                     torch.sigmoid(query_logits), batch_inputs["p_label"].float()
                 )
             elif self.framing in ["MC-SENT", "MC-MLM"]:
                 loss = F.cross_entropy(
-                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits], dim=1),
+                    torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1),
                     batch_inputs["mc_label"],
                 )
             elif self.framing == "MC-SENT-PAIR":
                 concat_logits = (
-                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
+                    torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
                 ).flatten()
                 one_hot_label = (
                     torch.zeros_like(concat_logits)
@@ -151,14 +151,14 @@ class WSCReframingModel(nn.Module):
                 )
             elif self.framing == "MC-SENT-SCALE":
                 loss = F.cross_entropy(
-                    torch.cat([query_logits.unsqueeze(dim=1), cand_logits.detach()], dim=1),
+                    torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
                     batch_inputs["mc_label"],
                 )
 
         if self.framing.startswith("P-"):
             query_pred = query_logits > 0
         elif self.framing.startswith("MC-"):
-            query_pred = query_logits > (cand_logits.max(dim=1)[0])
+            query_pred = query_logits > (full_cand_logits.max(dim=1)[0])
         acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
         batch_outputs = {"loss": loss, "label_pred": query_pred, "acc": acc}

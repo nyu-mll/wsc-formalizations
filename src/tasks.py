@@ -16,6 +16,10 @@ class DictionaryDataset(torch.utils.data.Dataset):
         super().__init__()
         self.data_dict = data_dict
         self.size = len(list(self.data_dict.values())[0])
+        for key, value in self.data_dict.items():
+            if len(value) != self.size:
+                log.info(f"wrong data size {key}")
+                raise ValueError
 
     def __getitem__(self, index):
         return {key: value[index] for key, value in self.data_dict.items()}
@@ -106,7 +110,7 @@ class WSCLikeTask(object):
             log.info(f"example {i}\n{str(example)}")
 
     def load_wsc_data(self):
-        wsc_candidates = self.dataset.split("_")[-1]
+        wsc_candidates = self.dataset.split("-")[-1]
         detok = get_detokenizer()
         nlp = get_spacy_nlp()
 
@@ -178,6 +182,7 @@ class WSCLikeTask(object):
                             for cand in example_group["all_cands"]
                             if cand != example["query_text"]
                         ]
+                    example["cand_text_list"] = list(set(example["cand_text_list"]))
                     if split == "train":
                         if correct_query is not None:
                             query_and_cands = [example["query_text"]] + example["cand_text_list"]
@@ -366,7 +371,11 @@ class WSCLikeTask(object):
                         "mc_label",
                     ]
 
-                data = {key: value for key, value in data.items() if key in required_domains}
+                data = {
+                    key: value
+                    for key, value in data.items()
+                    if key in required_domains and len(value) > 0
+                }
 
                 if split == "train":
                     if model.framing in ["MC-SENT-PAIR", "MC-SENT", "MC-MLM"]:
