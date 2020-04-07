@@ -48,10 +48,12 @@ class WSCReframingModel(nn.Module):
             "raw_input": (bs, seq_len)
             "span1_mask": (bs, seq_len)
             "span2_mask": (bs, seq_len)
-            for SENT and MLM input
+            for SENT input
+            "split_query_input": (bs, seq_len)
+            "split_cand_input": (bs, max_cands, seq_len)
+            for MLM input
             "query_input": (bs, seq_len)
             "cand_input": (bs, max_cands, seq_len)
-            for MLM input
             "mask_query_input": (bs, seq_len)
             "mask_cand_input": (bs, max_cands, seq_len)
             for P loss
@@ -80,12 +82,14 @@ class WSCReframingModel(nn.Module):
             query_logits = self.span_head(concat_repr).squeeze(dim=-1)
 
         elif "-SENT" in self.framing:
-            query_repr = use_transformer(batch_inputs["query_input"])[:, 0]
+            query_repr = use_transformer(batch_inputs["split_query_input"])[:, 0]
             query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
             if self.framing.startswith("MC-"):
-                valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
-                cand_input = batch_inputs["cand_input"][valid_cand_mask]
+                valid_cand_mask = (batch_inputs["split_cand_input"] != self.pad_token_id).max(
+                    dim=2
+                )[0]
+                cand_input = batch_inputs["split_cand_input"][valid_cand_mask]
                 cand_repr = use_transformer(cand_input)[:, 0]
                 cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
 
