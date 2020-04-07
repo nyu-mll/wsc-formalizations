@@ -63,7 +63,7 @@ parser.add_argument(
 
 # training settings
 # batch size
-parser.add_argument("--bs", type=int, default=16)
+parser.add_argument("--bs", type=int, default=8)
 # learning rate
 parser.add_argument("--lr", type=float, default=5e-6)
 # weight decay

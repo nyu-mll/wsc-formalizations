@@ -81,7 +81,7 @@ class Trainer:
                 else:
                     batch_outputs["loss"].backward()
                 score_record["acc"].append(batch_outputs["acc"].item())
-                score_record["count"].append(len(batch_inputs["label"]))
+                score_record["count"].append(len(batch_inputs["uid"]))
 
                 self.optimizer.step()
                 self.scheduler.step()
@@ -101,9 +101,9 @@ class Trainer:
                     val_acc = self.eval("val")["acc"]
                     log.info(f"val acc {val_acc}")
                     if val_acc > training_results["best_acc"]:
-                        log.info(f"best val acc updated\n{training_results}")
                         training_results["best_acc"] = val_acc
                         training_results["best_iter"] = training_results["current_iter"]
+                        log.info(f"best val acc updated\n{training_results}")
                         self.save_model(os.path.join(self.exp_dir, "best_model.pt"))
                     elif (
                         training_results["current_iter"]
@@ -119,15 +119,15 @@ class Trainer:
     def eval(self, split):
         log.info(f"start evaluating on {split}")
         self.model.eval()
-        eval_results = {"acc": None, "query_pred": []}
+        eval_results = {"acc": None, "label_pred": []}
         score_record = {"acc": [], "count": []}
 
         with torch.no_grad():
             for batch, batch_inputs in enumerate(self.task.iterators[split]):
                 batch_outputs = self.model(self.move_inputs_to_device(batch_inputs))
                 score_record["acc"].append(batch_outputs["acc"].item())
-                score_record["count"].append(len(batch_inputs["label"]))
-                eval_results["query_pred"].append(batch_outputs["query_pred"].tolist())
+                score_record["count"].append(len(batch_inputs["uid"]))
+                eval_results["label_pred"].append(batch_outputs["label_pred"].tolist())
 
                 if (batch + 1) % self.report_interval_iters == 0:
                     average_acc = sum(

@@ -277,7 +277,12 @@ class WSCLikeTask(object):
                 masked_text_tokens = [token for token in text_tokens]
                 for idx in range(*token_span):
                     masked_text_tokens[idx] = tokenizer.mask_token_id
-                return text_tokens, masked_text_tokens
+                split_text_tokens = (
+                    text_tokens[: token_span[0]]
+                    + [tokenizer.sep_token_id, tokenizer.sep_token_id]
+                    + text_tokens[token_span[0] :]
+                )
+                return text_tokens, masked_text_tokens, split_text_tokens
 
             for split, examples in self.raw_data.items():
                 data = {
@@ -287,6 +292,8 @@ class WSCLikeTask(object):
                     "span2_mask": [],
                     "query_input": [],
                     "cand_input": [],
+                    "split_query_input": [],
+                    "split_cand_input": [],
                     "mask_query_input": [],
                     "mask_cand_input": [],
                     "p_label": [],
@@ -301,7 +308,7 @@ class WSCLikeTask(object):
                     data["span2_mask"].append(
                         char_span_to_mask(example["text"], example["pronoun_char_span"])
                     )
-                    query_input, mask_query_input = add_mask_tokens(
+                    query_input, mask_query_input, split_query_input = add_mask_tokens(
                         *realign_span(
                             *replace_span(
                                 example["text"], example["pronoun_char_span"], example["query_text"]
@@ -310,8 +317,9 @@ class WSCLikeTask(object):
                     )
                     data["query_input"].append(query_input)
                     data["mask_query_input"].append(mask_query_input)
+                    data["split_query_input"].append(split_query_input)
                     if len(example["cand_text_list"]) > 0:
-                        cand_input, mask_cand_input = zip(
+                        cand_input, mask_cand_input, split_cand_input = zip(
                             *[
                                 add_mask_tokens(
                                     *realign_span(
@@ -324,9 +332,10 @@ class WSCLikeTask(object):
                             ]
                         )
                     else:
-                        cand_input, mask_cand_input = [], []
+                        cand_input, mask_cand_input, split_cand_input = [], [], []
                     data["cand_input"].append(cand_input)
                     data["mask_cand_input"].append(mask_cand_input)
+                    data["split_cand_input"].append(split_cand_input)
                     if split != "test":
                         data["p_label"].append(example["p_label"])
                     if split == "train":
@@ -335,11 +344,17 @@ class WSCLikeTask(object):
                 if model.framing == "P-SPAN":
                     required_domains = ["uid", "raw_input", "span1_mask", "span2_mask", "p_label"]
                 elif model.framing == "P-SENT":
-                    required_domains = ["uid", "query_input", "p_label"]
+                    required_domains = ["uid", "split_query_input", "p_label"]
                 elif model.framing == "MC-SENT-PLOSS":
-                    required_domains = ["uid", "query_input", "cand_input", "p_label"]
+                    required_domains = ["uid", "split_query_input", "split_cand_input", "p_label"]
                 elif model.framing in ["MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
-                    required_domains = ["uid", "query_input", "cand_input", "p_label", "mc_label"]
+                    required_domains = [
+                        "uid",
+                        "split_query_input",
+                        "split_cand_input",
+                        "p_label",
+                        "mc_label",
+                    ]
                 elif model.framing == "MC-MLM":
                     required_domains = [
                         "uid",
@@ -385,11 +400,11 @@ class WSCLikeTask(object):
                     return data_tensor
 
                 for key, value in data.items():
-                    if key in ["raw_input", "query_input", "mask_query_input"]:
+                    if key in ["raw_input", "query_input", "mask_query_input", "split_query_input"]:
                         data[key] = tensorize(
                             value, ndims=2, dtype=torch.long, default=tokenizer.pad_token_id
                         )
-                    elif key in ["cand_input", "mask_cand_input"]:
+                    elif key in ["cand_input", "mask_cand_input", "split_cand_input"]:
                         data[key] = tensorize(
                             value, ndims=3, dtype=torch.long, default=tokenizer.pad_token_id
                         )

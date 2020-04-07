@@ -66,7 +66,7 @@ class WSCReframingModel(nn.Module):
 
         def use_transformer(input_tokens):
             attention_mask = (input_tokens != self.pad_token_id).float()
-            return self.transformer(input_tokens, attention_mask=attention_mask)
+            return self.transformer(input_tokens, attention_mask=attention_mask)[0]
 
         if "-SPAN" in self.framing:
             assert self.framing.startswith("P-")
@@ -74,21 +74,20 @@ class WSCReframingModel(nn.Module):
             cls_repr = raw_repr[:, 0]
             span1_mask = batch_inputs["span1_mask"].unsqueeze(dim=2)
             span1_repr = torch.sum(raw_repr * span1_mask, dim=1) / span1_mask.sum(dim=1)
-            span2_repr = torch.sum(
-                raw_repr * batch_inputs["span2_mask"].unsqueeze(dim=2), dim=1
-            ) / batch_inputs["span2_mask"].sum(dim=1, keepdim=True)
-            concat_repr = torch.cat([cls_repr, span1_repr, span2_repr], dim=2)
-            query_logits = self.span_head(concat_repr)
+            span2_mask = batch_inputs["span2_mask"].unsqueeze(dim=2)
+            span2_repr = torch.sum(raw_repr * span2_mask, dim=1) / span2_mask.sum(dim=1)
+            concat_repr = torch.cat([cls_repr, span1_repr, span2_repr], dim=1)
+            query_logits = self.span_head(concat_repr).squeeze(dim=-1)
 
         elif "-SENT" in self.framing:
             query_repr = use_transformer(batch_inputs["query_input"])[:, 0]
-            query_logits = self.sent_head(query_repr)
+            query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
             if self.framing.startswith("MC-"):
                 valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
                 cand_input = batch_inputs["cand_input"][valid_cand_mask]
                 cand_repr = use_transformer(cand_input)[:, 0]
-                cand_logits = self.sent_head(cand_repr)
+                cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
 
         elif "-MLM" in self.framing:
             assert self.framing.startswith("MC-")
@@ -125,7 +124,9 @@ class WSCReframingModel(nn.Module):
 
         if self.train:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
-                loss = F.binary_cross_entropy_with_logits(query_logits, batch_inputs["p_label"])
+                loss = F.binary_cross_entropy(
+                    torch.sigmoid(query_logits), batch_inputs["p_label"].float()
+                )
             elif self.framing in ["MC-SENT", "MC-MLM"]:
                 loss = F.cross_entropy(
                     torch.cat([query_logits.unsqueeze(dim=1), cand_logits], dim=1),
@@ -141,8 +142,8 @@ class WSCReframingModel(nn.Module):
                     .flatten()
                 )
                 non_pad_mask = concat_logits != self.pad_logits
-                loss = F.binary_cross_entropy_with_logits(
-                    concat_logits[non_pad_mask], one_hot_label[non_pad_mask]
+                loss = F.binary_cross_entropy(
+                    torch.sigmoid(concat_logits[non_pad_mask]), one_hot_label[non_pad_mask]
                 )
             elif self.framing == "MC-SENT-SCALE":
                 loss = F.cross_entropy(
