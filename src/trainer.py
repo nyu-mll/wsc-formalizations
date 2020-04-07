@@ -69,6 +69,7 @@ class Trainer:
         training_results = {"best_acc": 0.0, "best_iter": -1, "current_iter": 0}
         score_record = {"acc": [], "count": []}
 
+        stopping = False
         for epoch in range(self.max_epochs):
             log.info(f"train epoch {epoch + 1} / {self.max_epochs}")
 
@@ -106,12 +107,16 @@ class Trainer:
                         log.info(f"best val acc updated\n{training_results}")
                         self.save_model(os.path.join(self.exp_dir, "best_model.pt"))
                     elif (
-                        training_results["current_iter"]
+                        self.stopping_patience != -1
+                        and training_results["current_iter"]
                         > training_results["best_iter"]
                         + self.val_interval_iters * self.stopping_patience
                     ):
                         log.info("out of patience")
+                        stopping = True
                         break
+                if stopping:
+                    break
 
         log.info(f"training done\n{training_results}")
         return training_results

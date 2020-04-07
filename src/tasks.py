@@ -383,6 +383,10 @@ class WSCLikeTask(object):
                         for key, value in data.items():
                             data[key] = [value[i] for i, b in enumerate(kept_examples) if b]
                         assert min(data["mc_label"]) >= 0
+                    if model.framing == "MC-SENT-SCALE":
+                        kept_examples = list(map(lambda x: x >= 0, data["mc_label"]))
+                        for key, value in data.items():
+                            data[key] = [value[i] for i, b in enumerate(kept_examples) if b]
 
                 def tensorize(data_list, ndims, dtype, default=None):
                     if ndims == 1:

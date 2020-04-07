@@ -64,13 +64,13 @@ parser.add_argument(
 
 # training settings
 # batch size
-parser.add_argument("--bs", type=int, default=4)
+parser.add_argument("--bs", type=int, default=8)
 # learning rate
 parser.add_argument("--lr", type=float, default=5e-6)
 # weight decay
 parser.add_argument("--weight-decay", type=float, default=1e-3)
 # number of epochs
-parser.add_argument("--max-epochs", type=int, default=25)
+parser.add_argument("--max-epochs", type=int, default=50)
 # ratio of warmup iters to full training process
 parser.add_argument("--warmup-iters-ratio", type=float, default=0.06)
 # number of iterations between validation

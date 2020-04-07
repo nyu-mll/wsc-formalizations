@@ -98,25 +98,22 @@ class WSCReframingModel(nn.Module):
             query_repr = use_transformer(batch_inputs["mask_query_input"])
             query_prob = torch.gather(
                 F.log_softmax(self.mlm_head(query_repr), dim=2),
-                index=batch_inputs["query_input"].unsqueeze(2),
+                index=batch_inputs["query_input"].unsqueeze(dim=2),
                 dim=2,
-            )
-            query_mask = (
-                (batch_inputs["mask_query_input"] == self.mask_token_id).float().unsqueeze(dim=2)
-            )
+            ).squeeze(dim=2)
+            query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).float()
             query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(dim=1)
 
             valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
             mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
+            cand_input = batch_inputs["cand_input"][valid_cand_mask]
             cand_repr = use_transformer(mask_cand_input)
             cand_prob = torch.gather(
                 F.log_softmax(self.mlm_head(cand_repr), dim=2),
-                index=batch_inputs["cand_input"].unsqueeze(2),
+                index=cand_input.unsqueeze(dim=2),
                 dim=2,
-            )
-            cand_mask = (
-                (batch_inputs["mask_cand_input"] == self.mask_token_id).float().unsqueeze(dim=2)
-            )
+            ).squeeze(dim=2)
+            cand_mask = (mask_cand_input == self.mask_token_id).float()
             cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
 
         # query_logits: (bs,)
@@ -137,14 +134,11 @@ class WSCReframingModel(nn.Module):
                     batch_inputs["mc_label"],
                 )
             elif self.framing == "MC-SENT-PAIR":
-                concat_logits = (
-                    torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
-                ).flatten()
-                one_hot_label = (
-                    torch.zeros_like(concat_logits)
-                    .scatter_(dim=1, index=batch_inputs["mc_label"], src=1)
-                    .flatten()
-                )
+                concat_logits = torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1)
+                one_hot_label = torch.zeros_like(concat_logits)
+                one_hot_label[
+                    torch.arange(len(batch_inputs["mc_label"])), batch_inputs["mc_label"]
+                ] = 1
                 non_pad_mask = concat_logits != self.pad_logits
                 loss = F.binary_cross_entropy(
                     torch.sigmoid(concat_logits[non_pad_mask]), one_hot_label[non_pad_mask]
@@ -161,5 +155,7 @@ class WSCReframingModel(nn.Module):
             query_pred = query_logits > (full_cand_logits.max(dim=1)[0])
         acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
-        batch_outputs = {"loss": loss, "label_pred": query_pred, "acc": acc}
+        batch_outputs = {"label_pred": query_pred, "acc": acc}
+        if self.training:
+            batch_outputs["loss"] = loss
         return batch_outputs
