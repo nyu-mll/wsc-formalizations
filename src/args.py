@@ -1,5 +1,6 @@
 import argparse
 import os
+import logging as log
 
 repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 parser = argparse.ArgumentParser(description="WSC Trick Experiments")
@@ -26,7 +27,7 @@ parser.add_argument("--load-model-ckpt", type=str, default="")
 # device
 parser.add_argument("--device", type=str, default="cuda", choices=["cpu", "cuda"])
 # mixed precision
-parser.add_argument("--amp", action="store_false")
+parser.add_argument("--amp", action="store_true")
 
 
 # data settings
@@ -63,13 +64,13 @@ parser.add_argument(
 
 # training settings
 # batch size
-parser.add_argument("--bs", type=int, default=8)
+parser.add_argument("--bs", type=int, default=4)
 # learning rate
 parser.add_argument("--lr", type=float, default=5e-6)
 # weight decay
 parser.add_argument("--weight-decay", type=float, default=1e-3)
 # number of epochs
-parser.add_argument("--max-epochs", type=int, default=50)
+parser.add_argument("--max-epochs", type=int, default=25)
 # ratio of warmup iters to full training process
 parser.add_argument("--warmup-iters-ratio", type=float, default=0.06)
 # number of iterations between validation
@@ -99,3 +100,4 @@ def check_config(cfg):
         apex_available = False
     if cfg.device == "cpu" or not apex_available:
         cfg.amp = False
+        log.info("amp not available, override to false")

@@ -88,7 +88,7 @@ class WSCLikeTask(object):
         self.iterators = None
 
         cache_file = os.path.join(self.cache_dir, f"{self.dataset}.pkl")
-        if os.path.exists(cache_file):
+        if not self.reload_data and os.path.exists(cache_file):
             log.info(f"loading cached raw data from {cache_file}")
             with open(cache_file, "rb") as f:
                 self.raw_data = pickle.load(f)
@@ -243,7 +243,7 @@ class WSCLikeTask(object):
         perproc_cache_file = os.path.join(
             self.cache_dir, f"{self.dataset}-{model.framing}-{model.pretrained}.pt"
         )
-        if os.path.exists(perproc_cache_file):
+        if not self.reload_data and os.path.exists(perproc_cache_file):
             log.info(f"loading cached preprocessed data from {perproc_cache_file}")
             self.preprocessed_data = torch.load(perproc_cache_file)
 
@@ -270,7 +270,7 @@ class WSCLikeTask(object):
 
             def replace_span(text, span, insert_text):
                 new_span = (span[0], span[0] + len(insert_text))
-                new_text = (text[: span[0]] + insert_text + text[span[1] :],)
+                new_text = text[: span[0]] + insert_text + text[span[1] :]
                 return new_text, new_span
 
             def add_mask_tokens(text_tokens, token_span):

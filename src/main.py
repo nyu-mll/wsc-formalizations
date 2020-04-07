@@ -14,7 +14,6 @@ from utils import config_logging
 def main():
     # parse arguments
     cfg = parser.parse_args()
-    check_config(cfg)
 
     # setup results
     cfg.exp_dir = os.path.join(cfg.results_dir, cfg.exp_name)
@@ -28,6 +27,9 @@ def main():
     config_logging(os.path.join(cfg.exp_dir, f"{cfg.mode}.log"))
     log.info(f"Experiment {cfg.exp_name}_{cfg.mode}")
     log.info(f"{cfg}")
+
+    # check arguments
+    check_config(cfg)
 
     # create task, model and trainer
     task = WSCLikeTask(
