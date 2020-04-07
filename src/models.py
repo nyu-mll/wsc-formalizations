@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import transformers
 
 
-class WSCVariantModel(nn.Module):
+class WSCReframingModel(nn.Module):
     def __init__(self, framing, pretrained, cache_dir):
         """
         framing, one of
@@ -34,11 +34,11 @@ class WSCVariantModel(nn.Module):
         self.framing = framing
 
         self.transformer = transformer_with_lm.roberta
-        if "-SPAN-" in self.framing:
+        if "-SPAN" in self.framing:
             self.span_head = nn.Linear(3 * self.hidden_size, 1)
-        elif "-SENT-" in self.framing:
+        elif "-SENT" in self.framing:
             self.sent_head = nn.Linear(self.hidden_size, 1)
-        elif "-MLM-" in self.framing:
+        elif "-MLM" in self.framing:
             self.mlm_head = transformer_with_lm.lm_head
 
     def forward(self, batch_inputs):
@@ -68,7 +68,7 @@ class WSCVariantModel(nn.Module):
             attention_mask = (input_tokens != self.pad_token_id).float()
             return self.transformer(input_tokens, attention_mask=attention_mask)
 
-        if "-SPAN-" in self.framing:
+        if "-SPAN" in self.framing:
             assert self.framing.startswith("P-")
             raw_repr = use_transformer(batch_inputs["raw_input"])
             cls_repr = raw_repr[:, 0]
@@ -80,7 +80,7 @@ class WSCVariantModel(nn.Module):
             concat_repr = torch.cat([cls_repr, span1_repr, span2_repr], dim=2)
             query_logits = self.span_head(concat_repr)
 
-        elif "-SENT-" in self.framing:
+        elif "-SENT" in self.framing:
             query_repr = use_transformer(batch_inputs["query_input"])[:, 0]
             query_logits = self.sent_head(query_repr)
 
@@ -90,7 +90,7 @@ class WSCVariantModel(nn.Module):
                 cand_repr = use_transformer(cand_input)[:, 0]
                 cand_logits = self.sent_head(cand_repr)
 
-        elif "-MLM-" in self.framing:
+        elif "-MLM" in self.framing:
             assert self.framing.startswith("MC-")
             query_repr = use_transformer(batch_inputs["mask_query_input"])
             query_prob = torch.gather(

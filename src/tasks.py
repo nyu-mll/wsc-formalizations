@@ -15,7 +15,7 @@ class DictionaryDataset(torch.utils.data.Dataset):
     def __init__(self, data_dict):
         super().__init__()
         self.data_dict = data_dict
-        self.size = len(self.data_dict.values()[0])
+        self.size = len(list(self.data_dict.values())[0])
 
     def __getitem__(self, index):
         return {key: value[index] for key, value in self.data_dict.items()}
@@ -28,7 +28,7 @@ def data_dict_collate_fn(entries):
     batch_inputs = {}
     for key in entries[0]:
         batch_values = [entry[key] for entry in entries]
-        if isinstance(batch_values[0]):
+        if isinstance(batch_values[0], torch.Tensor):
             batch_values = torch.stack(batch_values, dim=0)
         batch_inputs[key] = batch_values
     return batch_inputs
@@ -76,7 +76,7 @@ def find_likely_char_span(text, target):
     return text[slice(*span)], span
 
 
-class WSCTypeTask(object):
+class WSCLikeTask(object):
     def __init__(self, framing, dataset, reload_data, data_dir, cache_dir):
         self.framing = framing
         self.dataset = dataset
@@ -88,15 +88,15 @@ class WSCTypeTask(object):
         self.iterators = None
 
         cache_file = os.path.join(self.cache_dir, f"{self.dataset}.pkl")
-        if os.path.exist(cache_file):
+        if os.path.exists(cache_file):
             log.info(f"loading cached raw data from {cache_file}")
             with open(cache_file, "rb") as f:
                 self.raw_data = pickle.load(f)
         else:
             log.info(f"loading data from {self.dataset} dataset")
-            if self.dataset.startwith("winogrande"):
+            if self.dataset.startswith("winogrande"):
                 self.load_winogrande_data()
-            elif self.dataset.startwith("wsc"):
+            elif self.dataset.startswith("wsc"):
                 self.load_wsc_data()
             with open(cache_file, "wb") as f:
                 pickle.dump(self.raw_data, f)
@@ -164,36 +164,36 @@ class WSCTypeTask(object):
                 if key not in global_ans_dict:
                     global_ans_dict[key] = {"correct_query": None, "idxs": [], "all_cands": []}
                 global_ans_dict[key]["idxs"].append(idx)
-                global_ans_dict[key]["all_cands"].append(examples["query_text"])
-                if example.get(["p_label"], False):
+                global_ans_dict[key]["all_cands"].append(example["query_text"])
+                if example.get("p_label", False):
                     global_ans_dict[key]["correct_query"] = example["query_text"]
 
             for example_group in global_ans_dict.values():
                 correct_query = example_group["correct_query"]
-                if split == "train":
-                    assert correct_query is not None
                 for idx in example_group["idxs"]:
+                    example = examples[idx]
                     if wsc_candidates == "cross":
-                        examples[idx]["cand_text_list"] = [
+                        example["cand_text_list"] = [
                             cand
                             for cand in example_group["all_cands"]
-                            if cand != examples[idx]["query_text"]
+                            if cand != example["query_text"]
                         ]
-                    if split == "train" and correct_query is not None:
-                        query_and_cands = [examples[idx]["query_text"]] + examples[idx][
-                            "cand_text_list"
-                        ]
-                        try:
-                            examples[idx]["mc_label"] = query_and_cands.index(correct_query)
-                        except ValueError:
-                            examples[idx]["cand_text_list"].insert(0, correct_query)
-                            examples[idx]["mc_label"] = 1
+                    if split == "train":
+                        if correct_query is not None:
+                            query_and_cands = [example["query_text"]] + example["cand_text_list"]
+                            try:
+                                example["mc_label"] = query_and_cands.index(correct_query)
+                            except ValueError:
+                                example["cand_text_list"].insert(0, correct_query)
+                                example["mc_label"] = 1
+                        else:
+                            example["mc_label"] = -1
             return examples
 
         self.raw_data = {
-            "train": load_wsc_split("train.jsonl", "train"),
-            "val": load_wsc_split("val.jsonl", "val"),
-            "test": load_wsc_split("test.jsonl", "test"),
+            "train": load_wsc_split(os.path.join(self.data_dir, "WSC", "train.jsonl"), "train"),
+            "val": load_wsc_split(os.path.join(self.data_dir, "WSC", "val.jsonl"), "val"),
+            "test": load_wsc_split(os.path.join(self.data_dir, "WSC", "test.jsonl"), "test"),
         }
 
     def load_winogrande_data(self):
@@ -227,9 +227,15 @@ class WSCTypeTask(object):
 
         training_size = self.dataset.split("_")[-1]
         self.raw_data = {
-            "train": load_winogrande_split(f"train_{training_size}", "train"),
-            "val": load_winogrande_split("dev.jsonl", "val"),
-            "test": load_winogrande_split("test.jsonl", "test"),
+            "train": load_winogrande_split(
+                os.path.join(self.data_dir, "Winogrande", f"train_{training_size}.jsonl"), "train"
+            ),
+            "val": load_winogrande_split(
+                os.path.join(self.data_dir, "Winogrande", "dev.jsonl"), "val"
+            ),
+            "test": load_winogrande_split(
+                os.path.join(self.data_dir, "Winogrande", "test.jsonl"), "test"
+            ),
         }
 
     def preprocess_data(self, model):
@@ -246,9 +252,9 @@ class WSCTypeTask(object):
             self.preprocessed_data = {}
 
             def realign_span(text, span):
-                text_tokens = tokenizer.tokenize(text)["input_ids"]
-                prefix_tokens = tokenizer.tokenize(text[: span[0]])["input_ids"]
-                prefix_and_span_tokens = tokenizer.tokenize(text[: span[1]])["input_ids"]
+                text_tokens = tokenizer.encode_plus(text)["input_ids"]
+                prefix_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
+                prefix_and_span_tokens = tokenizer.encode_plus(text[: span[1]])["input_ids"]
                 token_span = (
                     shared_length(text_tokens, prefix_tokens),
                     len(prefix_and_span_tokens) - 1,
@@ -269,7 +275,7 @@ class WSCTypeTask(object):
 
             def add_mask_tokens(text_tokens, token_span):
                 masked_text_tokens = [token for token in text_tokens]
-                for idx in range(token_span):
+                for idx in range(*token_span):
                     masked_text_tokens[idx] = tokenizer.mask_token_id
                 return text_tokens, masked_text_tokens
 
@@ -288,7 +294,7 @@ class WSCTypeTask(object):
                 }
                 for example in examples:
                     data["uid"].append(example["uid"])
-                    data["raw_input"].append(tokenizer.tokenize(example["text"])["input_ids"])
+                    data["raw_input"].append(tokenizer.encode_plus(example["text"])["input_ids"])
                     data["span1_mask"].append(
                         char_span_to_mask(example["text"], example["query_char_span"])
                     )
@@ -304,22 +310,27 @@ class WSCTypeTask(object):
                     )
                     data["query_input"].append(query_input)
                     data["mask_query_input"].append(mask_query_input)
-                    cand_input, mask_cand_input = zip(
-                        *[
-                            add_mask_tokens(
-                                *realign_span(
-                                    *replace_span(
-                                        example["text"], example["pronoun_char_span"], cand_text
+                    if len(example["cand_text_list"]) > 0:
+                        cand_input, mask_cand_input = zip(
+                            *[
+                                add_mask_tokens(
+                                    *realign_span(
+                                        *replace_span(
+                                            example["text"], example["pronoun_char_span"], cand_text
+                                        )
                                     )
                                 )
-                            )
-                            for cand_text in example["cand_text_list"]
-                        ]
-                    )
+                                for cand_text in example["cand_text_list"]
+                            ]
+                        )
+                    else:
+                        cand_input, mask_cand_input = [], []
                     data["cand_input"].append(cand_input)
                     data["mask_cand_input"].append(mask_cand_input)
-                    data["p_label"].append(example["p_label"])
-                    data["mc_label"].append(example["mc_label"])
+                    if split != "test":
+                        data["p_label"].append(example["p_label"])
+                    if split == "train":
+                        data["mc_label"].append(example["mc_label"])
 
                 if model.framing == "P-SPAN":
                     required_domains = ["uid", "raw_input", "span1_mask", "span2_mask", "p_label"]
@@ -347,6 +358,7 @@ class WSCTypeTask(object):
                         kept_examples = data["p_label"]
                         for key, value in data.items():
                             data[key] = [value[i] for i, b in enumerate(kept_examples) if b]
+                        assert min(data["mc_label"]) >= 0
 
                 def tensorize(data_list, ndims, dtype, default=None):
                     if ndims == 1:
@@ -372,7 +384,7 @@ class WSCTypeTask(object):
                                     data_tensor[i, j, k] = token_id
                     return data_tensor
 
-                for key, value in data:
+                for key, value in data.items():
                     if key in ["raw_input", "query_input", "mask_query_input"]:
                         data[key] = tensorize(
                             value, ndims=2, dtype=torch.long, default=tokenizer.pad_token_id
@@ -391,10 +403,10 @@ class WSCTypeTask(object):
             torch.save(self.preprocessed_data, perproc_cache_file)
 
         log.info("display preprocessed fields")
-        for key, value in enumerate(self.preprocessed_data["train"]):
+        for key, value in self.preprocessed_data["train"].items():
             log.info(
                 f"{key}: "
-                f"{value.dtype, value.size() if isinstance(value, torch.Tensor) else len(value)}\n"
+                f"{(value.dtype, value.size()) if isinstance(value, torch.Tensor) else len(value)}\n"
                 f"{str(value[:5])}"
             )
 
@@ -410,7 +422,7 @@ class WSCTypeTask(object):
                 pin_memory=True,
                 drop_last=(split == "train"),
             )
-            for split, data in self.preprocessed_data
+            for split, data in self.preprocessed_data.items()
         }
 
     def write_pred(self, pred):

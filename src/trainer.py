@@ -1,7 +1,6 @@
 import os
 import torch
 import logging as log
-from apex import amp
 
 
 class Trainer:
@@ -22,7 +21,7 @@ class Trainer:
         self.task = task
         self.model = model
         self.task.preprocess_data(model=model)
-        self.task.creat_iterators(bs=bs)
+        self.task.build_iterators(bs=bs)
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
             self.optimizer,
@@ -43,6 +42,14 @@ class Trainer:
         self.stopping_patience = stopping_patience
         self.exp_dir = exp_dir
 
+        training_steps = len(self.task.iterators["train"])
+        if training_steps < self.val_interval_iters:
+            log.info(f"val_interval too large. override to {training_steps}")
+            self.val_interval_iters = training_steps
+        if training_steps < self.report_interval_iters:
+            log.info(f"report_interval too large. override to {training_steps}")
+            self.report_interval_iters = training_steps
+
     def to(self, device, amp):
         self.device = device
         self.amp = amp
@@ -55,6 +62,9 @@ class Trainer:
 
     def train(self):
         log.info("start training")
+        if self.amp:
+            from apex import amp
+
         self.model.train()
         training_results = {"best_acc": 0.0, "best_iter": -1, "current_iter": 0}
         score_record = {"acc": [], "count": []}

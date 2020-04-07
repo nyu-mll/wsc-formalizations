@@ -2,11 +2,10 @@ import os
 import logging as log
 import sys
 import json
-from apex import amp
 
 
 from args import parser, check_config
-from models import WSCVariantModel
+from models import WSCReframingModel
 from tasks import WSCLikeTask
 from trainer import Trainer
 from utils import config_logging
@@ -17,19 +16,18 @@ def main():
     cfg = parser.parse_args()
     check_config(cfg)
 
-    # setup logging
-    config_logging(os.path.join(cfg.exp_dir, f"{cfg.mode}.log"))
-    log.info(f"Experiment {cfg.exp_name}_{cfg.mode}")
-    log.info(f"{cfg}")
-
     # setup results
     cfg.exp_dir = os.path.join(cfg.results_dir, cfg.exp_name)
     cfg.cache_dir = os.path.join(cfg.results_dir, "cache")
-    os.makedirs(cfg.exp_dir)
     if not os.path.exists(cfg.exp_dir):
         os.makedirs(cfg.exp_dir)
     if not os.path.exists(cfg.cache_dir):
         os.makedirs(cfg.cache_dir)
+
+    # setup logging
+    config_logging(os.path.join(cfg.exp_dir, f"{cfg.mode}.log"))
+    log.info(f"Experiment {cfg.exp_name}_{cfg.mode}")
+    log.info(f"{cfg}")
 
     # create task, model and trainer
     task = WSCLikeTask(
@@ -39,7 +37,9 @@ def main():
         data_dir=cfg.data_dir,
         cache_dir=cfg.cache_dir,
     )
-    model = WSCVariantModel(framing=cfg.framing, pretrained=cfg.pretrained, cache_dir=cfg.cache_dir)
+    model = WSCReframingModel(
+        framing=cfg.framing, pretrained=cfg.pretrained, cache_dir=cfg.cache_dir
+    )
     trainer = Trainer(
         model=model,
         task=task,
@@ -58,6 +58,8 @@ def main():
     model.to(cfg.device)
     trainer.to(cfg.device, cfg.amp)
     if cfg.amp:
+        from apex import amp
+
         model, optimizer = amp.initialize(model, trainer.optimizer, opt_level="O1")
 
     # load model
