@@ -73,7 +73,7 @@ def main():
         result_dict = trainer.train()
         result_dict["exp_name"] = cfg.exp_name
         with open(os.path.join(cfg.results_dir, "val_summary.jsonl"), "a") as f:
-            f.write(json.dumps(result_dict))
+            f.write(json.dumps(result_dict) + "\n")
     elif cfg.mode == "eval":
         pred = trainer.eval(split="test")["query_pred"]
         task.write_pred(pred=pred, filename=os.path.join(cfg.results_dir, f"{cfg.exp_name}.submit"))
