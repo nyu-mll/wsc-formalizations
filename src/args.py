@@ -65,6 +65,8 @@ parser.add_argument(
 # training settings
 # batch size
 parser.add_argument("--bs", type=int, default=8)
+# accumulation
+parser.add_argument("--accumulation", type=int, default=1)
 # learning rate
 parser.add_argument("--lr", type=float, default=5e-6)
 # weight decay
@@ -101,3 +103,5 @@ def check_config(cfg):
     if cfg.device == "cpu" or not apex_available:
         cfg.amp = False
         log.info("amp not available, override to false")
+    assert cfg.bs % cfg.accumulation == 0
+    cfg.hardware_bs = cfg.bs // cfg.accumulation
