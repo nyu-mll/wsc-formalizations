@@ -16,6 +16,8 @@ def main():
     cfg = parser.parse_args()
 
     # setup results
+    if not os.path.exists(cfg.results_dir):
+        os.makedirs(cfg.results_dir)
     cfg.exp_dir = os.path.join(cfg.results_dir, cfg.exp_name)
     cfg.cache_dir = os.path.join(cfg.results_dir, "cache")
     if not os.path.exists(cfg.exp_dir):
