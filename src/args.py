@@ -111,5 +111,5 @@ def check_config(cfg):
     import random
     import torch
 
-    seed = random.randint(-10000, 10000) if cfg.seed != 42 else cfg.seed
+    seed = random.randint(0, 100000) if cfg.seed != 42 else cfg.seed
     torch.manual_seed(seed)
