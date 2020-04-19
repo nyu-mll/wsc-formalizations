@@ -10,7 +10,7 @@ WIP readme
 3. Download some spacy stuff
 ` python -m spacy download en_core_web_lg ` 
 4. WSC data can be downloaded [here](https://super.gluebenchmark.com/tasks), Winogrande data can be downloaded [here](https://mosaic.allenai.org/projects/winogrande) 
-
+5. (optional) Follow [instructions](https://github.com/NVIDIA/apex) to install apex.
 
 # About MLM
 
