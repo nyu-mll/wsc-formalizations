@@ -69,24 +69,25 @@ class WSCReframingModel(nn.Module):
         def use_transformer(input_tokens):
             attention_mask = (input_tokens != self.pad_token_id).long()
             max_seq_len = attention_mask.sum(dim=1).max()
-            return self.transformer(
+            transformer_repr = self.transformer(
                 input_tokens[:, :max_seq_len],
                 attention_mask=attention_mask[:, :max_seq_len].float(),
             )[0]
+            return transformer_repr, max_seq_len
 
         if "-SPAN" in self.framing:
             assert self.framing.startswith("P-")
-            raw_repr = use_transformer(batch_inputs["raw_input"])
+            raw_repr, max_seq_len = use_transformer(batch_inputs["raw_input"])
             cls_repr = raw_repr[:, 0]
-            span1_mask = batch_inputs["span1_mask"].unsqueeze(dim=2)
+            span1_mask = batch_inputs["span1_mask"][:, :max_seq_len].unsqueeze(dim=2)
             span1_repr = torch.sum(raw_repr * span1_mask, dim=1) / span1_mask.sum(dim=1)
-            span2_mask = batch_inputs["span2_mask"].unsqueeze(dim=2)
+            span2_mask = batch_inputs["span2_mask"][:, :max_seq_len].unsqueeze(dim=2)
             span2_repr = torch.sum(raw_repr * span2_mask, dim=1) / span2_mask.sum(dim=1)
             concat_repr = torch.cat([cls_repr, span1_repr, span2_repr], dim=1)
             query_logits = self.span_head(concat_repr).squeeze(dim=-1)
 
         elif "-SENT" in self.framing:
-            query_repr = use_transformer(batch_inputs["split_query_input"])[:, 0]
+            query_repr = use_transformer(batch_inputs["split_query_input"])[0][:, 0]
             query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
             if self.framing.startswith("MC-"):
@@ -94,30 +95,32 @@ class WSCReframingModel(nn.Module):
                     dim=2
                 )[0]
                 cand_input = batch_inputs["split_cand_input"][valid_cand_mask]
-                cand_repr = use_transformer(cand_input)[:, 0]
+                cand_repr = use_transformer(cand_input)[0][:, 0]
                 cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
 
         elif "-MLM" in self.framing:
             assert self.framing.startswith("MC-")
-            query_repr = use_transformer(batch_inputs["mask_query_input"])
+            query_repr, max_seq_len = use_transformer(batch_inputs["mask_query_input"])
             query_prob = torch.gather(
                 F.log_softmax(self.mlm_head(query_repr), dim=2),
-                index=batch_inputs["query_input"].unsqueeze(dim=2),
+                index=batch_inputs["query_input"][:, :max_seq_len].unsqueeze(dim=2),
                 dim=2,
             ).squeeze(dim=2)
-            query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).float()
+            query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).float()[
+                :, :max_seq_len
+            ]
             query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(dim=1)
 
             valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
             mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
             cand_input = batch_inputs["cand_input"][valid_cand_mask]
-            cand_repr = use_transformer(mask_cand_input)
+            cand_repr, max_seq_len = use_transformer(mask_cand_input)
             cand_prob = torch.gather(
                 F.log_softmax(self.mlm_head(cand_repr), dim=2),
-                index=cand_input.unsqueeze(dim=2),
+                index=cand_input[:, :max_seq_len].unsqueeze(dim=2),
                 dim=2,
             ).squeeze(dim=2)
-            cand_mask = (mask_cand_input == self.mask_token_id).float()
+            cand_mask = (mask_cand_input == self.mask_token_id).float()[:, :max_seq_len]
             cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
 
         # query_logits: (bs,)
