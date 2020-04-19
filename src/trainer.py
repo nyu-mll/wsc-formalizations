@@ -38,18 +38,20 @@ class Trainer:
         self.amp = None
 
         self.max_epochs = max_epochs
+        self.accumulation = accumulation
         self.val_interval_iters = val_interval_iters
         self.report_interval_iters = report_interval_iters
         self.stopping_patience = stopping_patience
         self.exp_dir = exp_dir
 
-        training_steps = len(self.task.iterators["train"])
-        if training_steps < self.val_interval_iters:
-            log.info(f"val_interval too large. override to {training_steps}")
-            self.val_interval_iters = training_steps
-        if training_steps < self.report_interval_iters:
-            log.info(f"report_interval too large. override to {training_steps}")
-            self.report_interval_iters = training_steps
+        self.batch_per_epoch = len(self.task.iterators["train"])
+        self.iters_per_epoch = self.batch_per_epoch // self.accumulation
+        if self.iters_per_epoch < self.val_interval_iters:
+            log.info(f"val_interval too large. override to {self.iters_per_epoch}")
+            self.val_interval_iters = self.iters_per_epoch
+        if self.iters_per_epoch < self.report_interval_iters:
+            log.info(f"report_interval too large. override to {self.iters_per_epoch}")
+            self.report_interval_iters = self.iters_per_epoch
 
     def to(self, device, amp):
         self.device = device
@@ -72,7 +74,6 @@ class Trainer:
 
         stopping = False
         batch_count = 0
-        batch_per_epoch = len(self.task.iterators["train"])
         for epoch in range(self.max_epochs):
             log.info(f"train epoch {epoch + 1} / {self.max_epochs}")
             self.model.zero_grad()
@@ -100,7 +101,7 @@ class Trainer:
                         ) / sum(score_record["count"])
                         log.info(
                             f"    "
-                            f"train batch {batch_count} / {batch_per_epoch}"
+                            f"train batch {batch_count} / {self.batch_per_epoch}"
                             f'(iter {training_results["current_iter"]} / {self.total_iters}),'
                             f"current average acc {average_acc}"
                         )
