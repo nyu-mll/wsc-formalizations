@@ -80,7 +80,7 @@ parser.add_argument("--val-interval-iters", type=int, default=1000)
 # number of iterations between reporting result
 parser.add_argument("--report-interval-iters", type=int, default=100)
 # number of validations waiting for better results before stopping, set to -1 to disable
-parser.add_argument("--stopping-patience", type=int, default=-1)
+parser.add_argument("--stopping-patience", type=int, default=20)
 
 
 # model settings

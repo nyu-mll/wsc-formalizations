@@ -74,12 +74,11 @@ class Trainer:
 
         stopping = False
         batch_count = 0
+        self.model.zero_grad()
         for epoch in range(self.max_epochs):
             log.info(f"train epoch {epoch + 1} / {self.max_epochs}")
-            self.model.zero_grad()
 
             for batch_inputs in self.task.iterators["train"]:
-                batch_count += 1
                 batch_outputs = self.model(self.move_inputs_to_device(batch_inputs))
                 if self.amp:
                     with amp.scale_loss(batch_outputs["loss"], self.optimizer) as scaled_loss:
@@ -89,12 +88,13 @@ class Trainer:
                 score_record["acc"].append(batch_outputs["acc"].item())
                 score_record["count"].append(len(batch_inputs["uid"]))
 
+                batch_count += 1
                 if batch_count % self.accumulation == 0:
                     self.optimizer.step()
                     self.scheduler.step()
                     self.model.zero_grad()
-                    training_results["current_iter"] += 1
 
+                    training_results["current_iter"] += 1
                     if training_results["current_iter"] % self.report_interval_iters == 0:
                         average_acc = sum(
                             [a * c for a, c in zip(score_record["acc"], score_record["count"])]
