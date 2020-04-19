@@ -9,8 +9,8 @@ from shared_settings import make_command
 
 
 def select_candidates(dataset):
-    lr_candidates = [1e-5, 2e-5, 3e-5]
-    bs_candidates = [8, 16, 32]
+    lr_candidates = [1e-5, 2e-5]
+    bs_candidates = [8, 16]
     if args.dataset in ["winogrande-l", "winogrande-xl"]:
         max_epochs_candidates = [5, 10, 20]
     else:
