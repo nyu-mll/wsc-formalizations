@@ -67,8 +67,12 @@ class WSCReframingModel(nn.Module):
         """
 
         def use_transformer(input_tokens):
-            attention_mask = (input_tokens != self.pad_token_id).float()
-            return self.transformer(input_tokens, attention_mask=attention_mask)[0]
+            attention_mask = (input_tokens != self.pad_token_id).long()
+            max_seq_len = attention_mask.sum(dim=1).max()
+            return self.transformer(
+                input_tokens[:, :max_seq_len],
+                attention_mask=attention_mask[:, :max_seq_len].float(),
+            )[0]
 
         if "-SPAN" in self.framing:
             assert self.framing.startswith("P-")

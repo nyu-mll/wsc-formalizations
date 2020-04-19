@@ -122,8 +122,8 @@ class Trainer:
                             log.info(f"        out of patience")
                             stopping = True
                             break
-                if stopping:
-                    break
+            if stopping:
+                break
 
         log.info(f"training done\n{training_results}")
         return training_results
