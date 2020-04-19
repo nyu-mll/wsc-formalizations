@@ -1,6 +1,8 @@
 import os
 import numpy
 
+repo_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 def encode_exp_name(dataset, framing, lr, bs, max_epochs, seed):
     return f"{dataset}_{framing}_lr_{lr}_bs_{bs}_max-epochs_{max_epochs}_seed_{seed}"
@@ -18,8 +20,7 @@ def make_command(dataset, framing, lr, bs, max_epochs, seed, gpu_capacity):
     exp_name = f"{encode_exp_name(dataset, framing, lr, bs, max_epochs, seed)}"
     accumulation = int(numpy.ceil(bs / gpu_capacity))
     command = (
-        f"python "
-        f'{os.path.join(".", "wsc-trick", "src", "main.py") }'
+        f'{os.path.join(repo_dir, "src", "main.py") }'
         f"--exp-name {exp_name} "
         f"--dataset {dataset} "
         f"--framing {framing} "
