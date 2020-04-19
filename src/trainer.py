@@ -100,19 +100,18 @@ class Trainer:
                             [a * c for a, c in zip(score_record["acc"], score_record["count"])]
                         ) / sum(score_record["count"])
                         log.info(
-                            f"    "
-                            f"train batch {batch_count} / {self.batch_per_epoch}"
-                            f'(iter {training_results["current_iter"]} / {self.total_iters}),'
+                            f"    train batch {batch_count} / {self.batch_per_epoch}"
+                            f'(iter {training_results["current_iter"]} / {self.total_iters}), '
                             f"current average acc {average_acc}"
                         )
                         score_record = {"acc": [], "count": []}
                     if training_results["current_iter"] % self.val_interval_iters == 0:
                         val_acc = self.eval("val")["acc"]
-                        log.info(f"    " f"val acc {val_acc}")
+                        log.info(f"    val acc {val_acc}")
                         if val_acc > training_results["best_acc"]:
                             training_results["best_acc"] = val_acc
                             training_results["best_iter"] = training_results["current_iter"]
-                            log.info(f"        " f"best val acc updated\n{training_results}")
+                            log.info(f"        best val acc updated\n{training_results}")
                             self.save_model(os.path.join(self.exp_dir, "best_model.pt"))
                         elif (
                             self.stopping_patience != -1
@@ -120,7 +119,7 @@ class Trainer:
                             > training_results["best_iter"]
                             + self.val_interval_iters * self.stopping_patience
                         ):
-                            log.info(f"        " f"out of patience")
+                            log.info(f"        out of patience")
                             stopping = True
                             break
                 if stopping:
