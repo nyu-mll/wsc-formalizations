@@ -1,3 +1,7 @@
+# Other files
+exp_control/submit_sbatch.sh
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
