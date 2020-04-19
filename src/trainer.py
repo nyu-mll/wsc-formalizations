@@ -69,7 +69,12 @@ class Trainer:
             from apex import amp
 
         self.model.train()
-        training_results = {"best_acc": 0.0, "best_iter": -1, "current_iter": 0}
+        training_results = {
+            "best_acc": 0.0,
+            "best_iter": -1,
+            "current_iter": 0,
+            "total_iter": self.total_iters,
+        }
         score_record = {"acc": [], "count": []}
 
         stopping = False
