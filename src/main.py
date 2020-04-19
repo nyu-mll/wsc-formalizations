@@ -47,7 +47,7 @@ def main():
     trainer = Trainer(
         model=model,
         task=task,
-        bs=cfg.hardware_bs,
+        hardware_bs=cfg.hardware_bs,
         accumulation=cfg.accumulation,
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
