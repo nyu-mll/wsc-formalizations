@@ -85,6 +85,7 @@ class Trainer:
 
             for batch_inputs in self.task.iterators["train"]:
                 batch_outputs = self.model(self.move_inputs_to_device(batch_inputs))
+                batch_outputs["loss"] = batch_outputs["loss"] / self.accumulation
                 if self.amp:
                     with amp.scale_loss(batch_outputs["loss"], self.optimizer) as scaled_loss:
                         scaled_loss.backward()
