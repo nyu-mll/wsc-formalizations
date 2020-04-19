@@ -7,13 +7,15 @@ import os
 import argparse
 from shared_settings import make_command
 
-lr_candidates = [1e-5, 2e-5, 3e-5]
-bs_candidates = [8, 16, 32, 64]
-max_epochs_candidates = [5, 10, 20, 40]
-seed_range = 1e6
 
-
-def select_candidates():
+def select_candidates(dataset):
+    lr_candidates = [1e-5, 2e-5, 3e-5]
+    bs_candidates = [8, 16, 32]
+    if args.dataset in ["winogrande-l", "winogrande-xl"]:
+        max_epochs_candidates = [5, 10, 20]
+    else:
+        max_epochs_candidates = [10, 20, 40]
+    seed_range = 1e6
     lr = lr_candidates[randrange(0, len(lr_candidates), 1)]
     bs = bs_candidates[randrange(0, len(bs_candidates), 1)]
     max_epochs = max_epochs_candidates[randrange(0, len(max_epochs_candidates), 1)]
@@ -27,7 +29,7 @@ def submit_trials(args):
 
     for trial in range(args.n_trials):
         # select candidates for trial
-        lr, bs, max_epochs, seed = select_candidates()
+        lr, bs, max_epochs, seed = select_candidates(args.dataset)
         command = make_command(
             args.dataset, args.framing, lr, bs, max_epochs, seed, args.gpu_capacity
         )
