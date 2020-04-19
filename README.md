@@ -2,7 +2,8 @@ WIP readme
 
 # Setup
 
-
+0. Clone the reprository 
+` git clone https://github.com/HaokunLiu/wsc-trick.git `
 1. Create an environment from environment.yml
 ` conda env create -f environment.yml `
 2. Activate the environment
