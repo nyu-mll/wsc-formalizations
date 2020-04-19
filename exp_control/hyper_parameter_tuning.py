@@ -34,7 +34,7 @@ def submit_trials(args):
         sbatch_file = os.path.join(args.repo_dir, "exp_control", f"{args.user}.sbatch")
         jobs.append(f'COMMAND="{command}" sbatch {sbatch_file}')
 
-    with open("submit_sbatch.sh", "w") as f:
+    with open(os.path.join(args.repo_dir, "exp_control", "submit_sbatch.sh"), "w") as f:
         f.writelines(jobs)
 
     return
