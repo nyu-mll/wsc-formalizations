@@ -111,7 +111,7 @@ class Trainer:
                         if val_acc > training_results["best_acc"]:
                             training_results["best_acc"] = val_acc
                             training_results["best_iter"] = training_results["current_iter"]
-                            log.info(f"        best val acc updated\n{training_results}")
+                            log.info(f"        best val acc updated: {training_results}")
                             self.save_model(os.path.join(self.exp_dir, "best_model.pt"))
                         elif (
                             self.stopping_patience != -1
@@ -125,7 +125,7 @@ class Trainer:
             if stopping:
                 break
 
-        log.info(f"training done\n{training_results}")
+        log.info(f"training done: {training_results}")
         return training_results
 
     def eval(self, split):

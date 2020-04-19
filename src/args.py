@@ -22,6 +22,8 @@ parser.add_argument(
 parser.add_argument("--mode", type=str, default="train", choices=["train", "eval"])
 # load model parameter before training / evaluating
 parser.add_argument("--load-model-ckpt", type=str, default="")
+# seed, set to 42 to random sample
+parser.add_argument("--seed", type=int, default=42)
 
 # device settings
 # device
@@ -105,3 +107,9 @@ def check_config(cfg):
         log.info("amp not available, override to false")
     assert cfg.bs % cfg.accumulation == 0
     cfg.hardware_bs = cfg.bs // cfg.accumulation
+
+    import random
+    import torch
+
+    seed = random.randint(-10000, 10000) if cfg.seed != 42 else cfg.seed
+    torch.manual_seed(seed)
