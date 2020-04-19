@@ -146,7 +146,7 @@ class Trainer:
                         [a * c for a, c in zip(score_record["acc"], score_record["count"])]
                     ) / sum(score_record["count"])
                     log.info(
-                        f"eval batch {batch_count + 1} / {len(self.task.iterators[split])},"
+                        f"eval batch {batch_count + 1} / {len(self.task.iterators[split])}, "
                         f"current average acc {average_acc}"
                     )
 
