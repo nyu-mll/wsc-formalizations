@@ -53,7 +53,7 @@ def find_first_char_span(text, target, starting_idx=0):
     span = (starting_idx, min(starting_idx + len(target), len(text)))
     found = False
     for idx in range(starting_idx, len(text) - len(target)):
-        if text[idx : idx + len(target)].lower() == target:
+        if text[idx : idx + len(target)].lower() == target.lower():
             span = (idx, idx + len(target))
             found = True
             break
@@ -67,16 +67,16 @@ def find_likely_char_span(text, target):
     pad_text = f" {text} "
     special_chars = """.,;:"' """
     for idx in range(0, len(text) - len(target)):
-        if text[idx : idx + len(target)].lower() == target:
+        if text[idx : idx + len(target)].lower() == target.lower():
             span = (idx, idx + len(target))
             left, right = (pad_text[idx], pad_text[idx + len(target) + 1])
             span_score = int(left in special_chars) + int(right in special_chars)
             all_spans.append((span, span_score))
-    all_spans = all_spans.sort(key=lambda x: x[1], reverse=True)
-    assert all_spans != []
-    if len(all_spans) != 1:
+    all_spans.sort(key=lambda x: x[1], reverse=True)
+    assert all_spans != [], f"Target not found, text: {text}, target:{target}"
+    if len(all_spans) != 1 and all_spans[0][1] == all_spans[1][1]:
         log.warning(f"more than one span found text={text} target={target}")
-    span = all_spans[0]
+    span = all_spans[0][0]
     return text[slice(*span)], span
 
 
@@ -210,18 +210,21 @@ class WSCLikeTask(object):
 
             def convert_winogrande_example(example, flip=False):
                 new_example = {}
-                new_example["uid"] = f'{split}_{example["idx"]}{"f" if flip else ""}'
+                new_example["uid"] = f'{split}_{example["qID"]}{"f" if flip else ""}'
                 new_example["text"] = detok.detokenize(example["sentence"].split())
                 new_example["query_text"] = example["option2"] if flip else example["option1"]
-                new_example["query_char_span"] = find_likely_char_span(
+                _, new_example["query_char_span"] = find_likely_char_span(
                     new_example["text"], new_example["query_text"]
                 )
                 new_example["pronoun_text"] = "_"
-                new_example["pronoun_char_span"] = find_likely_char_span(new_example["text"], "_")
+                _, new_example["pronoun_char_span"] = find_likely_char_span(
+                    new_example["text"], "_"
+                )
                 new_example["cand_text_list"] = [example["option1"] if flip else example["option2"]]
                 if split != "test":
                     new_example["p_label"] = example["answer"] == ("2" if flip else "1")
                     new_example["mc_label"] = example["answer"] == ("1" if flip else "2")
+                return new_example
 
             if split == "train":
                 examples = [convert_winogrande_example(example) for example in examples] + [
@@ -229,8 +232,9 @@ class WSCLikeTask(object):
                 ]
             else:
                 examples = [convert_winogrande_example(example) for example in examples]
+            return examples
 
-        training_size = self.dataset.split("_")[-1]
+        training_size = self.dataset.split("-")[-1]
         self.raw_data = {
             "train": load_winogrande_split(
                 os.path.join(self.data_dir, "Winogrande", f"train_{training_size}.jsonl"), "train"
