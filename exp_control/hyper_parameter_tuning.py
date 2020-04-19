@@ -22,7 +22,7 @@ def select_candidates():
     return lr, bs, max_epochs, seed
 
 
-def submit_trails(args):
+def submit_trials(args):
     jobs = []
 
     for trial in range(args.n_trials):
@@ -86,4 +86,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     args.repo_dir = repo_dir
-    submit_trails(args)
+    submit_trials(args)
