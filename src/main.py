@@ -2,7 +2,7 @@ import os
 import logging as log
 import sys
 import json
-
+import torch
 
 from args import parser, check_config
 from models import WSCReframingModel
@@ -47,7 +47,8 @@ def main():
     trainer = Trainer(
         model=model,
         task=task,
-        bs=cfg.bs,
+        hardware_bs=cfg.hardware_bs,
+        accumulation=cfg.accumulation,
         lr=cfg.lr,
         weight_decay=cfg.weight_decay,
         max_epochs=cfg.max_epochs,
@@ -64,6 +65,7 @@ def main():
     if cfg.amp:
         from apex import amp
 
+        amp.register_float_function(torch, "sigmoid")
         model, optimizer = amp.initialize(model, trainer.optimizer, opt_level="O1")
 
     # load model
