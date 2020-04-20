@@ -2,7 +2,7 @@
 Hyper parameter tuning based on RoBERTa on WSC
 """
 
-from random import randrange, random
+import random
 import os
 import argparse
 from shared_settings import make_command
@@ -16,9 +16,9 @@ def select_candidates(dataset):
     else:
         max_epochs_candidates = [10, 20, 40]
     seed_range = 1e6
-    lr = lr_candidates[randrange(0, len(lr_candidates), 1)]
-    bs = bs_candidates[randrange(0, len(bs_candidates), 1)]
-    max_epochs = max_epochs_candidates[randrange(0, len(max_epochs_candidates), 1)]
+    lr = lr_candidates[random.randrange(0, len(lr_candidates), 1)]
+    bs = bs_candidates[random.randrange(0, len(bs_candidates), 1)]
+    max_epochs = max_epochs_candidates[random.randrange(0, len(max_epochs_candidates), 1)]
     seed = random.randint(0, seed_range)
 
     return lr, bs, max_epochs, seed
@@ -34,10 +34,11 @@ def submit_trials(args):
             args.dataset, args.framing, lr, bs, max_epochs, seed, args.gpu_capacity
         )
         sbatch_file = os.path.join(args.repo_dir, "exp_control", f"{args.user}.sbatch")
-        jobs.append(f'COMMAND="{command}" sbatch {sbatch_file}')
+        jobs.append(f'COMMAND="{command}" sbatch {sbatch_file}\n')
 
-    with open(os.path.join(args.repo_dir, "exp_control", "submit_sbatch.sh"), "w") as f:
-        f.writelines(jobs)
+    with open(os.path.join(args.repo_dir, "exp_control", "submit_sbatch.sh"), "a") as f:
+        for one_job in jobs:
+            f.write(one_job)
 
     return
 

@@ -20,7 +20,7 @@ def make_command(dataset, framing, lr, bs, max_epochs, seed, gpu_capacity):
     exp_name = f"{encode_exp_name(dataset, framing, lr, bs, max_epochs, seed)}"
     accumulation = int(numpy.ceil(bs / gpu_capacity))
     command = (
-        f'{os.path.join(repo_dir, "src", "main.py") }'
+        f'{os.path.join(repo_dir, "src", "main.py")} '
         f"--exp-name {exp_name} "
         f"--dataset {dataset} "
         f"--framing {framing} "
