@@ -126,7 +126,9 @@ class WSCReframingModel(nn.Module):
         # query_logits: (bs,)
         if self.framing.startswith("MC-"):
             # cand_logits: (batch_cand_count,)
-            full_cand_logits = torch.ones_like(valid_cand_mask.float()) * self.pad_logits
+            full_cand_logits = (
+                torch.ones_like(valid_cand_mask.to(cand_logits.dtype)) * self.pad_logits
+            )
             full_cand_logits[valid_cand_mask] = cand_logits
             # full_cand_logits: (bs, max_cands)
 
