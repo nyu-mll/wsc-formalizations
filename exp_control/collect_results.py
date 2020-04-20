@@ -27,15 +27,15 @@ def collect_results(args):
         results["max_epochs"].append(max_epochs)
         results["seed"].append(seed)
         results["best_val_accuracy"].append(one_exp_result["best_acc"])
-        results["exp_name"] = one_exp_result["exp_name"]
+        results["exp_name"].append(one_exp_result["exp_name"])
 
     with open(os.path.join(args.results_dir, "val_summary.jsonl"), "r") as reader:
         for row in reader:
             one_exp_result = json.loads(row)
             record_exp(one_exp_result)
 
-    df_raw = pd.Dataframe.from_dict(results)
-    df_raw.sorted(by=["dataset", "best_val_accuracy"], ascending=False, inplace=True)
+    df_raw = pd.DataFrame.from_dict(results)
+    df_raw.sort_values(by=["dataset", "best_val_accuracy"], ascending=False, inplace=True)
     df_raw.to_csv(os.path.join(args.results_dir, "raw_results.csv"), index=False)
 
     # TODO:
@@ -59,7 +59,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--data-dir", type=str, default=os.getenv("NLU_DATA_DIR", os.path.join(repo_dir, "data"))
     )
-    parser.add_argument("--user", type=str)
 
     args = parser.parse_args()
     args.repo_dir = repo_dir
