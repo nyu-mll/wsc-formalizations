@@ -136,7 +136,7 @@ class WSCReframingModel(nn.Module):
                 full_cand_logits[valid_cand_mask] = cand_logits
                 # full_cand_logits: (bs, max_cands)
             else:
-                full_cand_logits = torch.ones_like(query_logits.unsqueeze(dim=1)) * self.pad_logit
+                full_cand_logits = torch.ones_like(query_logits.unsqueeze(dim=1)) * self.pad_logits
 
         if self.training:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
