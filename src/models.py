@@ -112,7 +112,7 @@ class WSCReframingModel(nn.Module):
             query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(dim=1)
 
             valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
-            if not all(valid_cand_mask == 0):
+            if not torch.all(valid_cand_mask == 0):
                 mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
                 cand_input = batch_inputs["cand_input"][valid_cand_mask]
                 cand_repr, max_seq_len = use_transformer(mask_cand_input)
@@ -128,7 +128,7 @@ class WSCReframingModel(nn.Module):
 
         # query_logits: (bs,)
         if self.framing.startswith("MC-"):
-            if not all(valid_cand_mask == 0):
+            if not torch.all(valid_cand_mask == 0):
                 # cand_logits: (batch_cand_count,)
                 full_cand_logits = (
                     torch.ones_like(valid_cand_mask.to(cand_logits.dtype)) * self.pad_logits
