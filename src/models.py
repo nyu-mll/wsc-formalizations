@@ -106,36 +106,42 @@ class WSCReframingModel(nn.Module):
                 index=batch_inputs["query_input"][:, :max_seq_len].unsqueeze(dim=2),
                 dim=2,
             ).squeeze(dim=2)
-            query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).float()[
-                :, :max_seq_len
-            ]
+            query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).to(
+                query_prob.dtype
+            )[:, :max_seq_len]
             query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(dim=1)
 
             valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
-            mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
-            cand_input = batch_inputs["cand_input"][valid_cand_mask]
-            cand_repr, max_seq_len = use_transformer(mask_cand_input)
-            cand_prob = torch.gather(
-                F.log_softmax(self.mlm_head(cand_repr), dim=2),
-                index=cand_input[:, :max_seq_len].unsqueeze(dim=2),
-                dim=2,
-            ).squeeze(dim=2)
-            cand_mask = (mask_cand_input == self.mask_token_id).float()[:, :max_seq_len]
-            cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
+            if not all(valid_cand_mask == 0):
+                mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
+                cand_input = batch_inputs["cand_input"][valid_cand_mask]
+                cand_repr, max_seq_len = use_transformer(mask_cand_input)
+                cand_prob = torch.gather(
+                    F.log_softmax(self.mlm_head(cand_repr), dim=2),
+                    index=cand_input[:, :max_seq_len].unsqueeze(dim=2),
+                    dim=2,
+                ).squeeze(dim=2)
+                cand_mask = (mask_cand_input == self.mask_token_id).to(cand_prob.dtype)[
+                    :, :max_seq_len
+                ]
+                cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
 
         # query_logits: (bs,)
         if self.framing.startswith("MC-"):
-            # cand_logits: (batch_cand_count,)
-            full_cand_logits = (
-                torch.ones_like(valid_cand_mask.to(cand_logits.dtype)) * self.pad_logits
-            )
-            full_cand_logits[valid_cand_mask] = cand_logits
-            # full_cand_logits: (bs, max_cands)
+            if not all(valid_cand_mask == 0):
+                # cand_logits: (batch_cand_count,)
+                full_cand_logits = (
+                    torch.ones_like(valid_cand_mask.to(cand_logits.dtype)) * self.pad_logits
+                )
+                full_cand_logits[valid_cand_mask] = cand_logits
+                # full_cand_logits: (bs, max_cands)
+            else:
+                full_cand_logits = torch.ones_like(query_logits.unsqueeze(dim=1)) * self.pad_logit
 
         if self.training:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
                 loss = F.binary_cross_entropy(
-                    torch.sigmoid(query_logits), batch_inputs["p_label"].float()
+                    torch.sigmoid(query_logits), batch_inputs["p_label"].to(query_logits.dtype)
                 )
             elif self.framing in ["MC-SENT", "MC-MLM"]:
                 loss = F.cross_entropy(
