@@ -65,7 +65,6 @@ def main():
     if cfg.amp:
         from apex import amp
 
-        amp.register_float_function(torch, "sigmoid")
         model, optimizer = amp.initialize(model, trainer.optimizer, opt_level="O1")
 
     # load model
