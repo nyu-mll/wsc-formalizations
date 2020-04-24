@@ -129,6 +129,8 @@ class WSCReframingModel(nn.Module):
                     :, :max_seq_len
                 ]
                 cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
+        else:
+            raise NotImplementedError
 
         # query_logits: (bs,)
         if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT", "MC-MLM"]:
@@ -167,11 +169,21 @@ class WSCReframingModel(nn.Module):
                     torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
                     batch_inputs["mc_label"],
                 )
+            else:
+                raise NotImplementedError
 
-        if self.framing.startswith("P-"):
+        if self.framing in ["P-SPAN", "P-SENT"]:
             query_pred = query_logits > 0
-        elif self.framing.startswith("MC-"):
+        elif self.framing in [
+            "MC-SENT-PLOSS",
+            "MC-SENT-PAIR",
+            "MC-SENT-SCALE",
+            "MC-SENT",
+            "MC-MLM",
+        ]:
             query_pred = query_logits > (full_cand_logits.max(dim=1)[0])
+        else:
+            raise NotImplementedError
         acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
         batch_outputs = {"label_pred": query_pred, "acc": acc}
