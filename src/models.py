@@ -147,7 +147,7 @@ class WSCReframingModel(nn.Module):
         if self.training:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
                 loss = F.cross_entropy(
-                    torch.stack([torch.zeros_like(query_logits), query_logits]),
+                    torch.stack([torch.zeros_like(query_logits), query_logits], dim=-1),
                     batch_inputs["p_label"],
                 )
             elif self.framing in ["MC-SENT", "MC-MLM"]:
@@ -165,7 +165,8 @@ class WSCReframingModel(nn.Module):
                 non_pad_logits = concat_logits[non_pad_mask]
                 non_pad_label = one_hot_label[non_pad_mask]
                 loss = F.cross_entropy(
-                    torch.stack([torch.zeros_like(non_pad_logits), non_pad_logits]), non_pad_label
+                    torch.stack([torch.zeros_like(non_pad_logits), non_pad_logits], dim=-1),
+                    non_pad_label,
                 )
             elif self.framing in ["MC-SENT-SCALE"]:
                 loss = F.cross_entropy(
