@@ -75,8 +75,7 @@ class WSCReframingModel(nn.Module):
             )[0]
             return transformer_repr, max_seq_len
 
-        if "-SPAN" in self.framing:
-            assert self.framing.startswith("P-")
+        if self.framing in ["P-SPAN"]:
             raw_repr, max_seq_len = use_transformer(batch_inputs["raw_input"])
             cls_repr = raw_repr[:, 0]
             span1_mask = batch_inputs["span1_mask"][:, :max_seq_len].unsqueeze(dim=2)
@@ -86,11 +85,17 @@ class WSCReframingModel(nn.Module):
             concat_repr = torch.cat([cls_repr, span1_repr, span2_repr], dim=1)
             query_logits = self.span_head(concat_repr).squeeze(dim=-1)
 
-        elif "-SENT" in self.framing:
+        elif self.framing in [
+            "P-SENT",
+            "MC-SENT-PLOSS",
+            "MC-SENT-PAIR",
+            "MC-SENT-SCALE",
+            "MC-SENT",
+        ]:
             query_repr = use_transformer(batch_inputs["split_query_input"])[0][:, 0]
             query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
-            if self.framing.startswith("MC-"):
+            if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
                 valid_cand_mask = (batch_inputs["split_cand_input"] != self.pad_token_id).max(
                     dim=2
                 )[0]
@@ -98,8 +103,7 @@ class WSCReframingModel(nn.Module):
                 cand_repr = use_transformer(cand_input)[0][:, 0]
                 cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
 
-        elif "-MLM" in self.framing:
-            assert self.framing.startswith("MC-")
+        elif self.framing in ["MC-MLM"]:
             query_repr, max_seq_len = use_transformer(batch_inputs["mask_query_input"])
             query_prob = torch.gather(
                 F.log_softmax(self.mlm_head(query_repr), dim=2),
@@ -127,7 +131,7 @@ class WSCReframingModel(nn.Module):
                 cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
 
         # query_logits: (bs,)
-        if self.framing.startswith("MC-"):
+        if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT", "MC-MLM"]:
             if not torch.all(valid_cand_mask == 0):
                 # cand_logits: (batch_cand_count,)
                 full_cand_logits = (
@@ -148,7 +152,7 @@ class WSCReframingModel(nn.Module):
                     torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1),
                     batch_inputs["mc_label"],
                 )
-            elif self.framing == "MC-SENT-PAIR":
+            elif self.framing in ["MC-SENT-PAIR"]:
                 concat_logits = torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1)
                 one_hot_label = torch.zeros_like(concat_logits)
                 one_hot_label[
@@ -158,7 +162,7 @@ class WSCReframingModel(nn.Module):
                 loss = F.binary_cross_entropy(
                     torch.sigmoid(concat_logits[non_pad_mask]), one_hot_label[non_pad_mask]
                 )
-            elif self.framing == "MC-SENT-SCALE":
+            elif self.framing in ["MC-SENT-SCALE"]:
                 loss = F.cross_entropy(
                     torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
                     batch_inputs["mc_label"],
