@@ -157,7 +157,7 @@ class WSCReframingModel(nn.Module):
                 )
             elif self.framing in ["MC-SENT-PAIR"]:
                 concat_logits = torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1)
-                one_hot_label = torch.zeros_like(concat_logits)
+                one_hot_label = torch.zeros_like(concat_logits).long()
                 one_hot_label[
                     torch.arange(len(batch_inputs["mc_label"])), batch_inputs["mc_label"]
                 ] = 1
