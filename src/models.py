@@ -99,9 +99,10 @@ class WSCReframingModel(nn.Module):
                 valid_cand_mask = (batch_inputs["split_cand_input"] != self.pad_token_id).max(
                     dim=2
                 )[0]
-                cand_input = batch_inputs["split_cand_input"][valid_cand_mask]
-                cand_repr = use_transformer(cand_input)[0][:, 0]
-                cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
+                if not torch.all(valid_cand_mask == 0):
+                    cand_input = batch_inputs["split_cand_input"][valid_cand_mask]
+                    cand_repr = use_transformer(cand_input)[0][:, 0]
+                    cand_logits = self.sent_head(cand_repr).squeeze(dim=-1)
 
         elif self.framing in ["MC-MLM"]:
             query_repr, max_seq_len = use_transformer(batch_inputs["mask_query_input"])
