@@ -1,1 +1,1 @@
-"wsc-spacy_FRAMING_COUNTS.json"
+{"MC-MLM": 51, "P-SPAN": 50, "MC-SENT": 20, "MC-SENT-PAIR": 20, "MC-SENT-PLOSS": 20, "P-SENT": 20, "MC-SENT-SCALE": 20}
