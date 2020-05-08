@@ -2,6 +2,8 @@
 exp_control/submit_sbatch.sh
 exp_control/wh/
 
+*.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
