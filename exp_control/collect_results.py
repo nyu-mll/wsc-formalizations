@@ -25,6 +25,7 @@ def collect_results(args):
             or bs not in [8, 16, 32, 64]
             or max_epochs not in [10, 20, 40]
         ):
+            print(f'skip {one_exp_result["exp_name"]}')
             return
         results["dataset"].append(dataset)
         results["framing"].append(framing)
@@ -50,7 +51,7 @@ def collect_results(args):
     df_grouped = df_raw.groupby(["dataset", "framing"], as_index=False).agg(
         {"best_val_accuracy": ["max", "mean", "std"]}
     )
-    df_grouped = df_grouped.sort_values(by=("best_val_accuracy", "mean"), ascending=False)
+    df_grouped = df_grouped.sort_values(by=("best_val_accuracy", "max"), ascending=False)
     df_grouped.to_csv(os.path.join(args.results_dir, "agg_results.csv"), index=False)
     # TODO:
     # 1. a tsv file of all experiments, eliminate seed, summarize best_val_accuracy to p0.25,
