@@ -45,20 +45,11 @@ def collect_results(args):
     df_raw.sort_values(by=["dataset", "best_val_accuracy"], ascending=False, inplace=True)
     df_raw.to_csv(os.path.join(args.results_dir, "raw_results.csv"), index=False)
 
-    import IPython
-
-    IPython.embed()
     df_grouped = df_raw.groupby(["dataset", "framing"], as_index=False).agg(
-        {"best_val_accuracy": ["max", "mean", "std"]}
+        {"best_val_accuracy": ["max", "mean", "std", "count"]}
     )
     df_grouped = df_grouped.sort_values(by=("best_val_accuracy", "max"), ascending=False)
     df_grouped.to_csv(os.path.join(args.results_dir, "agg_results.csv"), index=False)
-    # TODO:
-    # 1. a tsv file of all experiments, eliminate seed, summarize best_val_accuracy to p0.25,
-    # sorted by (dataset, framing, val_accuracy)
-
-    # 2. a tsv file of only the best HP in each (dataset, framing).
-
     return
 
 
