@@ -470,5 +470,12 @@ class WSCLikeTask(object):
             for split, data in self.preprocessed_data.items()
         }
 
-    def write_pred(self, pred):
-        raise NotImplementedError
+    def write_pred(self, pred, filename):
+        if self.dataset.startswith("wsc"):
+            assert len(pred) == 146
+            output = []
+            for idx, one_pred in enumerate(pred):
+                output.append(json.dumps({"idx": idx, "label": ["False", "True"][one_pred]}))
+            with open(filename, "w") as f:
+                f.writelines(output)
+        return
