@@ -192,7 +192,7 @@ class WSCReframingModel(nn.Module):
 
         # no labels for testing
         if test:
-            acc = 0
+            acc = torch.tensor(0).float()
         else:
             acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
