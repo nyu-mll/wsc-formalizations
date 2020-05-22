@@ -164,7 +164,9 @@ class Trainer:
         self.model.train()
         return eval_results
 
-    def load_model(self, model_ckpt):
+    def load_model(self, model_ckpt=None):
+        if model_ckpt is None:
+            model_ckpt = os.path.join(self.exp_dir, "best_model.pt"))
         log.info(f"load model from {model_ckpt}")
         self.model.load_state_dict(torch.load(model_ckpt, map_location=self.device), strict=False)
 

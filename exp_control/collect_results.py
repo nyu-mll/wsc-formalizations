@@ -24,6 +24,13 @@ def collect_results(args):
 
     def record_exp(one_exp_result):
         dataset, framing, lr, bs, max_epochs, seed = decode_exp_name(one_exp_result["exp_name"])
+        if (
+            lr not in [1e-5, 2e-5, 3e-5]
+            or bs not in [8, 16, 32, 64]
+            or max_epochs not in [10, 20, 40]
+        ):
+            print(f'skip {one_exp_result["exp_name"]}')
+            return
         results["dataset"].append(dataset)
         results["framing"].append(framing)
         results["learning_rate"].append(lr)
@@ -47,12 +54,11 @@ def collect_results(args):
     df_raw.sort_values(by=["dataset", "best_val_accuracy"], ascending=False, inplace=True)
     df_raw.to_csv(os.path.join(args.results_dir, "raw_results.csv"), index=False)
 
-    # TODO:
-    # 1. a tsv file of all experiments, eliminate seed, summarize best_val_accuracy to p0.25,
-    # sorted by (dataset, framing, val_accuracy)
-
-    # 2. a tsv file of only the best HP in each (dataset, framing).
-
+    df_grouped = df_raw.groupby(["dataset", "framing"], as_index=False).agg(
+        {"best_val_accuracy": ["max", "mean", "std", "count"]}
+    )
+    df_grouped = df_grouped.sort_values(by=("best_val_accuracy", "max"), ascending=False)
+    df_grouped.to_csv(os.path.join(args.results_dir, "agg_results.csv"), index=False)
     return
 
 

@@ -42,11 +42,16 @@ parser.add_argument(
     choices=[
         "wsc-spacy",
         "wsc-cross",
-        "winogrande-xs",
-        "winogrande-s",
-        "winogrande-m",
-        "winogrande-l",
-        "winogrande-xl",
+        "winogrande-xs-spacy",
+        "winogrande-s-spacy",
+        "winogrande-m-spacy",
+        "winogrande-l-spacy",
+        "winogrande-xl-spacy",
+        "winogrande-xs-option",
+        "winogrande-s-option",
+        "winogrande-m-option",
+        "winogrande-l-option",
+        "winogrande-xl-option",
     ],
 )
 # framing

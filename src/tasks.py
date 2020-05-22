@@ -111,7 +111,7 @@ class WSCLikeTask(object):
             log.info(f"example {i}\n{str(example)}")
 
     def load_wsc_data(self):
-        wsc_candidates = self.dataset.split("-")[-1]
+        candidates_source = self.dataset.split("-")[-1]
         detok = get_detokenizer()
         nlp = get_spacy_nlp()
 
@@ -144,7 +144,7 @@ class WSCLikeTask(object):
                     target=new_example["pronoun_text"],
                     starting_idx=len(detok.detokenize(tokens[: example["target"]["span2_index"]])),
                 )
-                if wsc_candidates == "spacy":
+                if candidates_source == "spacy":
                     new_example["cand_text_list"] = [
                         cand.text
                         for cand in filter_noun_chunks(
@@ -185,7 +185,7 @@ class WSCLikeTask(object):
                 correct_query = example_group["correct_query"]
                 for idx in example_group["idxs"]:
                     example = examples[idx]
-                    if wsc_candidates == "cross":
+                    if candidates_source == "cross":
                         example["cand_text_list"] = [
                             cand
                             for cand in example_group["all_cands"]
@@ -211,7 +211,9 @@ class WSCLikeTask(object):
         }
 
     def load_winogrande_data(self):
+        training_size, candidates_source = self.dataset.split("-")[-2:]
         detok = get_detokenizer()
+        nlp = get_spacy_nlp()
 
         def load_winogrande_split(filename, split):
             with open(filename, "r") as f:
@@ -229,10 +231,22 @@ class WSCLikeTask(object):
                 _, new_example["pronoun_char_span"] = find_likely_char_span(
                     new_example["text"], "_"
                 )
-                new_example["cand_text_list"] = [example["option1"] if flip else example["option2"]]
                 if split != "test":
                     new_example["p_label"] = example["answer"] == ("2" if flip else "1")
                     new_example["mc_label"] = example["answer"] == ("1" if flip else "2")
+                new_example["cand_text_list"] = [example["option1"] if flip else example["option2"]]
+                if candidates_source == "spacy":
+                    new_example["cand_text_list"].extend(
+                        [
+                            cand.text
+                            for cand in filter_noun_chunks(
+                                extended_noun_chunks(nlp(new_example["text"])),
+                                exclude_pronouns=True,
+                                exclude_query=[example["option1"], example["option2"], "_"],
+                                exact_match=False,
+                            )
+                        ]
+                    )
                 return new_example
 
             if split == "train":
@@ -243,7 +257,6 @@ class WSCLikeTask(object):
                 examples = [convert_winogrande_example(example) for example in examples]
             return examples
 
-        training_size = self.dataset.split("-")[-1]
         self.raw_data = {
             "train": load_winogrande_split(
                 os.path.join(self.data_dir, "Winogrande", f"train_{training_size}.jsonl"), "train"
@@ -466,5 +479,12 @@ class WSCLikeTask(object):
             for split, data in self.preprocessed_data.items()
         }
 
-    def write_pred(self, pred):
-        raise NotImplementedError
+    def write_pred(self, pred, filename):
+        if self.dataset.startswith("wsc"):
+            assert len(pred) == 146
+            output = []
+            for idx, one_pred in enumerate(pred):
+                output.append(json.dumps({"idx": idx, "label": ["False", "True"][one_pred]}) + "\n")
+            with open(filename, "w") as f:
+                f.writelines(output)
+        return

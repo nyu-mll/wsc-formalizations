@@ -186,7 +186,10 @@ def filter_noun_chunks(chunks, exclude_pronouns=False, exclude_query=None, exact
         ]
 
     if exclude_query is not None:
-        excl_txt = [exclude_query.lower()]
+        if isinstance(exclude_query, str):
+            excl_txt = [exclude_query.lower()]
+        elif isinstance(exclude_query, list):
+            excl_txt = [exel.lower() for exel in exclude_query]
         filtered_chunks = []
         for chunk in chunks:
             lower_chunk = chunk.text.lower()

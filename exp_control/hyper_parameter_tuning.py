@@ -9,8 +9,8 @@ from shared_settings import make_command
 
 
 def select_candidates(dataset):
-    lr_candidates = [1e-5, 2e-5]
-    bs_candidates = [8, 16]
+    lr_candidates = [1e-5, 2e-5, 3e-5]
+    bs_candidates = [8, 16, 32, 64]
     if args.dataset in ["winogrande-l", "winogrande-xl"]:
         max_epochs_candidates = [5, 10, 20]
     else:
@@ -61,15 +61,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset",
         type=str,
-        default="wsc-cross",
         choices=[
             "wsc-spacy",
             "wsc-cross",
-            "winogrande-xs",
-            "winogrande-s",
-            "winogrande-m",
-            "winogrande-l",
-            "winogrande-xl",
+            "winogrande-xs-spacy",
+            "winogrande-s-spacy",
+            "winogrande-m-spacy",
+            "winogrande-l-spacy",
+            "winogrande-xl-spacy",
+            "winogrande-xs-option",
+            "winogrande-s-option",
+            "winogrande-m-option",
+            "winogrande-l-option",
+            "winogrande-xl-option",
         ],
     )
     parser.add_argument(
