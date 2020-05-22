@@ -3,6 +3,7 @@ import pickle
 import logging as log
 import json
 import torch
+import pandas as pd
 from fairseq_wsc.wsc_utils import (
     filter_noun_chunks,
     extended_noun_chunks,
@@ -171,6 +172,14 @@ class WSCLikeTask(object):
                 global_ans_dict[key]["all_cands"].append(example["query_text"])
                 if example.get("p_label", False):
                     global_ans_dict[key]["correct_query"] = example["query_text"]
+
+            # temporary debug code
+            # temp = pd.Series(global_ans_dict).reset_index()
+            # temp_head, temp_tail = os.path.split(filename)
+            # temp_pre = temp_tail.split('.')[0]
+            # temp.to_json(f"/scratch/wh629/nlu/projects/wsc/{temp_pre}_temp.json")
+            # with open("/scratch/wh629/nlu/projects/wsc/temp.json", "w") as f:
+            #     f.write(json.dumps(global_ans_dict))
 
             for example_group in global_ans_dict.values():
                 correct_query = example_group["correct_query"]

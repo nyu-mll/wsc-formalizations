@@ -16,6 +16,10 @@ def collect_results(args):
         "seed": [],
         "best_val_accuracy": [],
         "exp_name": [],
+        "best_iter": [],
+        "current_iter": [],
+        "total_iter": [],
+        "early_stop": []
     }
 
     def record_exp(one_exp_result):
@@ -28,6 +32,11 @@ def collect_results(args):
         results["seed"].append(seed)
         results["best_val_accuracy"].append(one_exp_result["best_acc"])
         results["exp_name"].append(one_exp_result["exp_name"])
+        results["best_iter"].append(one_exp_result["best_iter"])
+        results["current_iter"].append(one_exp_result["current_iter"])
+        results["total_iter"].append(one_exp_result["total_iter"])
+        results["early_stop"].append(one_exp_result["current_iter"]<one_exp_result["total_iter"])
+	
 
     with open(os.path.join(args.results_dir, "val_summary.jsonl"), "r") as reader:
         for row in reader:
