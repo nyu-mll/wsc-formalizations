@@ -136,13 +136,19 @@ class Trainer:
 
     def eval(self, split):
         log.info(f"start evaluating on {split}")
+
+        if split=="test":
+            test = True
+        else:
+            test = False
+
         self.model.eval()
         eval_results = {"acc": None, "label_pred": []}
         score_record = {"acc": [], "count": []}
 
         with torch.no_grad():
             for batch_count, batch_inputs in enumerate(self.task.iterators[split]):
-                batch_outputs = self.model(self.move_inputs_to_device(batch_inputs))
+                batch_outputs = self.model(self.move_inputs_to_device(batch_inputs), test)
                 score_record["acc"].append(batch_outputs["acc"].item())
                 score_record["count"].append(len(batch_inputs["uid"]))
                 eval_results["label_pred"].append(batch_outputs["label_pred"].tolist())

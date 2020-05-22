@@ -41,7 +41,7 @@ class WSCReframingModel(nn.Module):
         elif "-MLM" in self.framing:
             self.mlm_head = transformer_with_lm.lm_head
 
-    def forward(self, batch_inputs):
+    def forward(self, batch_inputs, test=False):
         """
         batch_inputs:
             for SPAN input
@@ -189,7 +189,12 @@ class WSCReframingModel(nn.Module):
             query_pred = query_logits > (full_cand_logits.max(dim=1)[0])
         else:
             raise NotImplementedError
-        acc = (query_pred == batch_inputs["p_label"]).float().mean()
+
+        # no labels for testing
+        if test:
+            acc = 0
+        else:
+            acc = (query_pred == batch_inputs["p_label"]).float().mean()
 
         batch_outputs = {"label_pred": query_pred, "acc": acc}
         if self.training:
