@@ -475,7 +475,7 @@ class WSCLikeTask(object):
             assert len(pred) == 146
             output = []
             for idx, one_pred in enumerate(pred):
-                output.append(json.dumps({"idx": idx, "label": ["False", "True"][one_pred]}))
+                output.append(json.dumps({"idx": idx, "label": ["False", "True"][one_pred]}) + "\n")
             with open(filename, "w") as f:
                 f.writelines(output)
         return
