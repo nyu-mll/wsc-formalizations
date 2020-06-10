@@ -61,9 +61,12 @@ parser.add_argument(
     choices=[
         "P-SPAN",
         "P-SENT",
+        "P-SENT-QUAD",
         "MC-SENT-PLOSS",
         "MC-SENT-PAIR",
+        "MC-SENT-PAIR-QUAD",
         "MC-SENT-SCALE",
+        "MC-SENT-PAIR-QUAD",
         "MC-SENT",
         "MC-MLM",
     ],
