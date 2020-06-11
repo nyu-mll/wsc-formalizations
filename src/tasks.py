@@ -485,9 +485,12 @@ class WSCLikeTask(object):
             output = []
             for idx, one_pred in enumerate(pred):
                 assert len(one_pred) == 1, "multiple predictions"
-                on_pred_val = one_pred[0]
+                one_pred_val = one_pred[0]
 
-                output.append(json.dumps({"idx": idx, "label": ["False", "True"][on_pred_val]}) + "\n")
+                output.append(json.dumps({"idx": idx, "label": ["False", "True"][one_pred_val]}) + "\n")
+
+                # debug
+                # output.append(json.dumps({"idx": idx, "label": one_pred, "value": one_pred_val}) + "\n")
             with open(filename, "w") as f:
                 f.writelines(output)
         return
