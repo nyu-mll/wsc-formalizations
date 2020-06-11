@@ -3,13 +3,69 @@ import pickle
 import logging as log
 import json
 import torch
-import pandas as pd
+import random
+import copy
 from fairseq_wsc.wsc_utils import (
     filter_noun_chunks,
     extended_noun_chunks,
     get_detokenizer,
     get_spacy_nlp,
 )
+
+# class QuadSampler(torch.utils.data.Sampler):
+#     def __init__(self, data_source, matched_indices, num_samples=None):
+#         super().__init__()
+#         self.data_source = data_source
+#         self._num_samples = num_samples
+#         self.matched_indices = matched_indices
+#         self.iter_match = []
+#         self.last_iter = 0
+#         self.matched = 0
+#
+#     def __iter__(self):
+#         n = len(self.data_source)
+#         if len(self.iter_match) > 0:
+#             self.last_iter = self.iter_match.pop()
+#         else:
+#             self.last_iter = iter(torch.randperm(n).tolist())
+#             self.iter_match = copy.deepcopy(self.matched_indices[self.last_iter])
+#
+#         return self.last_iter
+#
+#     def __len__(self):
+#         return self.num_samples
+
+class QuadBatchSampler(torch.utils.data.Sampler):
+    def __init__(self, sampler, batch_size, drop_last, matched_indices):
+        self.sampler = sampler
+        self.batch_size = batch_size
+        self.drop_last = drop_last
+        self.matched_indices = matched_indices
+
+    def __iter__(self):
+        batch = []
+        for idx in self.sampler:
+            batch.append(idx)
+            if len(batch) == self.batch_size:
+                yield batch
+                batch = []
+                pass
+            else:
+                # random.shuffle(self.matched_indices[idx])
+                for matched_idx in self.matched_indices[idx]:
+                    batch.append(matched_idx)
+                    if len(batch) == self.batch_size:
+                        yield batch
+                        batch = []
+                        break
+        if len(batch) > 0 and not self.drop_last:
+            yield batch
+
+    def __len__(self):
+        if self.drop_last:
+            return len(self.sampler) // self.batch_size
+        else:
+            return (len(self.sampler) + self.batch_size - 1) // self.batch_size
 
 
 class DictionaryDataset(torch.utils.data.Dataset):
@@ -372,13 +428,14 @@ class WSCLikeTask(object):
                     if split == "train":
                         data["mc_label"].append(example["mc_label"])
 
+                required_domains = {}
                 if model.framing == "P-SPAN":
                     required_domains = ["uid", "raw_input", "span1_mask", "span2_mask", "p_label"]
                 elif model.framing == "P-SENT":
                     required_domains = ["uid", "split_query_input", "p_label"]
                 elif model.framing == "MC-SENT-PLOSS":
                     required_domains = ["uid", "split_query_input", "split_cand_input", "p_label"]
-                elif model.framing in ["MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
+                elif model.framing in ["MC-SENT-PAIR", "MC-SENT-PAIR-QUAD", "MC-SENT-SCALE", "MC-SENT"]:
                     required_domains = [
                         "uid",
                         "split_query_input",
@@ -404,7 +461,7 @@ class WSCLikeTask(object):
                 }
 
                 if split == "train":
-                    if model.framing in ["MC-SENT-PAIR", "MC-SENT", "MC-MLM"]:
+                    if model.framing in ["MC-SENT-PAIR", "MC-SENT-PAIR-QUAD", "MC-SENT", "MC-MLM"]:
                         kept_examples = data["p_label"]
                         for key, value in data.items():
                             data[key] = [value[i] for i, b in enumerate(kept_examples) if b]
@@ -464,7 +521,7 @@ class WSCLikeTask(object):
                 f"{str(value[:5])}"
             )
 
-    def build_iterators(self, bs):
+    def build_iterators(self, bs, framing):
 
         self.iterators = {
             split: torch.utils.data.DataLoader(
@@ -478,6 +535,42 @@ class WSCLikeTask(object):
             )
             for split, data in self.preprocessed_data.items()
         }
+
+        if "Quad" in framing:
+            matched_indices = match_indices(self.preprocessed_data["train"])
+            qsampler = QuadBatchSampler(
+                torch.utils.data.RandomSampler(dict_data),
+                batch_size = bs,
+                drop_last = True,
+                matched_indices = matched_indices,
+            )
+            self.iterators["train"] = torch.utils.data.DataLoader(
+                dataset = DictionaryDataset(data),
+                batch_sampler = qsampler,
+                collate_fn = tasks.data_dict_collate_fn,
+                pin_memory = True,
+            )
+
+    def match_indices(dict_data):
+        matches = {}
+
+        for i in range(len(dict_data)):
+            for j in range(i + 1, len(dict_data)):
+                if i != j:
+                    i_uid, i_post = dict_data[i]['uid'].split('-')
+                    j_uid, j_post = dict_data[j]['uid'].split('-')
+
+                    if i_uid == j_uid:
+                        if matches.get(j, False):
+                            matches[i].append(j)
+                        else:
+                            matches[i] = [j]
+
+                        if matches.get(j, False):
+                            matches[j].append(i)
+                        else:
+                            matches[j] = [i]
+        return matches
 
     def write_pred(self, pred, filename):
         if self.dataset.startswith("wsc"):

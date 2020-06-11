@@ -84,6 +84,7 @@ if __name__ == "__main__":
             "P-SENT",
             "MC-SENT-PLOSS",
             "MC-SENT-PAIR",
+            "MC-SENT-PAIR-QUAD",
             "MC-SENT-SCALE",
             "MC-SENT",
             "MC-MLM",

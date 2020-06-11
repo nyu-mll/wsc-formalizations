@@ -12,6 +12,7 @@ class WSCReframingModel(nn.Module):
             "P-SENT"
             "MC-SENT-PLOSS"
             "MC-SENT-PAIR"
+            "MC-SENT-PAIR-QUAD"
             "MC-SENT-SCALE"
             "MC-SENT"
             "MC-MLM"
@@ -89,13 +90,14 @@ class WSCReframingModel(nn.Module):
             "P-SENT",
             "MC-SENT-PLOSS",
             "MC-SENT-PAIR",
+            "MC-SENT-PAIR-QUAD",
             "MC-SENT-SCALE",
             "MC-SENT",
         ]:
             query_repr = use_transformer(batch_inputs["split_query_input"])[0][:, 0]
             query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
-            if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
+            if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-PAIR-QUAD", "MC-SENT-SCALE", "MC-SENT"]:
                 valid_cand_mask = (batch_inputs["split_cand_input"] != self.pad_token_id).max(
                     dim=2
                 )[0]
@@ -134,7 +136,7 @@ class WSCReframingModel(nn.Module):
             raise NotImplementedError
 
         # query_logits: (bs,)
-        if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT", "MC-MLM"]:
+        if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-PAIR-QUAD", "MC-SENT-SCALE", "MC-SENT", "MC-MLM"]:
             if not torch.all(valid_cand_mask == 0):
                 # cand_logits: (batch_cand_count,)
                 full_cand_logits = (
@@ -156,7 +158,7 @@ class WSCReframingModel(nn.Module):
                     torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1),
                     batch_inputs["mc_label"],
                 )
-            elif self.framing in ["MC-SENT-PAIR"]:
+            elif self.framing in ["MC-SENT-PAIR", "MC-SENT-PAIR-QUAD"]:
                 concat_logits = torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1)
                 one_hot_label = torch.zeros_like(concat_logits).long()
                 one_hot_label[
@@ -182,6 +184,7 @@ class WSCReframingModel(nn.Module):
         elif self.framing in [
             "MC-SENT-PLOSS",
             "MC-SENT-PAIR",
+            "MC-SENT-PAIR-QUAD",
             "MC-SENT-SCALE",
             "MC-SENT",
             "MC-MLM",
