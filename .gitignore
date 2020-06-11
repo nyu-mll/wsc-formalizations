@@ -1,3 +1,6 @@
+# submissions for superGLUE
+analysis/ensembled_predictions/submission/
+
 # Other files
 exp_control/submit_sbatch.sh
 exp_control/wh/
