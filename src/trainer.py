@@ -22,7 +22,7 @@ class Trainer:
         self.task = task
         self.model = model
         self.task.preprocess_data(model=model)
-        self.task.build_iterators(bs=hardware_bs)
+        self.task.build_iterators(bs=hardware_bs, framing = model.framing)
         self.total_iters = len(task.iterators["train"]) * max_epochs // accumulation
         self.optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.OneCycleLR(
