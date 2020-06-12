@@ -536,7 +536,9 @@ class WSCLikeTask(object):
             for split, data in self.preprocessed_data.items()
         }
 
-        if "Quad" in framing:
+        if "QUAD" in framing:
+            log.info("="*40 + " Using Quad Loader " + "="*40)
+
             matched_indices = match_indices(self.preprocessed_data["train"])
             qsampler = QuadBatchSampler(
                 torch.utils.data.RandomSampler(dict_data),
