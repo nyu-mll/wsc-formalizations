@@ -7,10 +7,10 @@ source activate wsc
 export NLU_RESULTS_DIR=/scratch/wh629/nlu/projects/wsc/results
 export NLU_DATA_DIR=/scratch/wh629/nlu/projects/wsc/data
 NETID=wh629
-TRIALS=60
+TRIALS=20
 DATA=winogrande-m-option
 FRAME=MC-SENT-PAIR
-GPUCAP=1
+GPUCAP=2
 
 python hyper_parameter_tuning.py \
 	--user ${NETID} \
