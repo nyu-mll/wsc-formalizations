@@ -428,7 +428,6 @@ class WSCLikeTask(object):
                     if split == "train":
                         data["mc_label"].append(example["mc_label"])
 
-                required_domains = {}
                 if model.framing == "P-SPAN":
                     required_domains = ["uid", "raw_input", "span1_mask", "span2_mask", "p_label"]
                 elif model.framing == "P-SENT":
@@ -453,6 +452,8 @@ class WSCLikeTask(object):
                         "p_label",
                         "mc_label",
                     ]
+                else:
+                    required_domains = []
 
                 data = {
                     key: value
@@ -551,6 +552,7 @@ class WSCLikeTask(object):
                 batch_sampler = qsampler,
                 collate_fn = tasks.data_dict_collate_fn,
                 pin_memory = True,
+                num_workers=4,
             )
 
     def match_indices(dict_data):

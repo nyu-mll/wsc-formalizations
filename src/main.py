@@ -66,6 +66,7 @@ def main():
         from apex import amp
 
         model, optimizer = amp.initialize(model, trainer.optimizer, opt_level="O1")
+        log.info("="*40 + "Using half precision" + "="*40)
 
     # load model
     if cfg.load_model_ckpt != "":
