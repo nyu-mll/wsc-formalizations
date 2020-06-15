@@ -573,7 +573,7 @@ class WSCLikeTask(object):
             self.iterators["train"] = torch.utils.data.DataLoader(
                 dataset = dict_data,
                 batch_sampler = qsampler,
-                collate_fn = tasks.data_dict_collate_fn,
+                collate_fn = data_dict_collate_fn,
                 pin_memory = True,
                 num_workers=4,
             )
