@@ -524,6 +524,28 @@ class WSCLikeTask(object):
 
     def build_iterators(self, bs, framing):
         log.info("=" * 40 + " Building Loaders " + "=" * 40)
+
+        def match_indices(dict_data):
+            matches = {}
+
+            for i in range(len(dict_data)):
+                for j in range(i + 1, len(dict_data)):
+                    if i != j:
+                        i_uid, i_post = dict_data[i]['uid'].split('-')
+                        j_uid, j_post = dict_data[j]['uid'].split('-')
+
+                        if i_uid == j_uid:
+                            if matches.get(j, False):
+                                matches[i].append(j)
+                            else:
+                                matches[i] = [j]
+
+                            if matches.get(j, False):
+                                matches[j].append(i)
+                            else:
+                                matches[j] = [i]
+            return matches
+
         self.iterators = {
             split: torch.utils.data.DataLoader(
                 dataset=DictionaryDataset(data),
@@ -554,27 +576,6 @@ class WSCLikeTask(object):
                 pin_memory = True,
                 num_workers=4,
             )
-
-    def match_indices(dict_data):
-        matches = {}
-
-        for i in range(len(dict_data)):
-            for j in range(i + 1, len(dict_data)):
-                if i != j:
-                    i_uid, i_post = dict_data[i]['uid'].split('-')
-                    j_uid, j_post = dict_data[j]['uid'].split('-')
-
-                    if i_uid == j_uid:
-                        if matches.get(j, False):
-                            matches[i].append(j)
-                        else:
-                            matches[i] = [j]
-
-                        if matches.get(j, False):
-                            matches[j].append(i)
-                        else:
-                            matches[j] = [i]
-        return matches
 
     def write_pred(self, pred, filename):
         if self.dataset.startswith("wsc"):
