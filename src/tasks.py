@@ -523,7 +523,7 @@ class WSCLikeTask(object):
             )
 
     def build_iterators(self, bs, framing):
-
+        log.info("=" * 40 + " Building Loaders " + "=" * 40)
         self.iterators = {
             split: torch.utils.data.DataLoader(
                 dataset=DictionaryDataset(data),
