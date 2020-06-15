@@ -562,7 +562,8 @@ class WSCLikeTask(object):
         if "QUAD" in framing:
             log.info("="*40 + " Using Quad Loader " + "="*40)
 
-            matched_indices = match_indices(self.preprocessed_data["train"])
+            dict_data = DictionaryDataset(self.preprocessed_data["train"])
+            matched_indices = match_indices(dict_data)
             qsampler = QuadBatchSampler(
                 torch.utils.data.RandomSampler(dict_data),
                 batch_size = bs,
@@ -570,7 +571,7 @@ class WSCLikeTask(object):
                 matched_indices = matched_indices,
             )
             self.iterators["train"] = torch.utils.data.DataLoader(
-                dataset = DictionaryDataset(data),
+                dataset = dict_data,
                 batch_sampler = qsampler,
                 collate_fn = tasks.data_dict_collate_fn,
                 pin_memory = True,
