@@ -44,20 +44,25 @@ class QuadBatchSampler(torch.utils.data.Sampler):
 
     def __iter__(self):
         batch = []
+        added = []
         for idx in self.sampler:
-            batch.append(idx)
-            if len(batch) == self.batch_size:
-                yield batch
-                batch = []
-                pass
-            else:
-                # random.shuffle(self.matched_indices[idx])
-                for matched_idx in self.matched_indices[idx]:
-                    batch.append(matched_idx)
-                    if len(batch) == self.batch_size:
-                        yield batch
-                        batch = []
-                        break
+            if not idx in added:
+                batch.append(idx)
+                added.append(idx)
+                if len(batch) == self.batch_size:
+                    yield batch
+                    batch = []
+                    pass
+                else:
+                    # random.shuffle(self.matched_indices[idx])
+                    for matched_idx in self.matched_indices[idx]:
+                        if not matched_idx in added:
+                            batch.append(matched_idx)
+                            added.append(matched_idx)
+                            if len(batch) == self.batch_size:
+                                yield batch
+                                batch = []
+                                break
         if len(batch) > 0 and not self.drop_last:
             yield batch
 
