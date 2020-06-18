@@ -345,7 +345,11 @@ class WSCLikeTask(object):
 
             def realign_span(text, span):
                 text_tokens = tokenizer.encode_plus(text)["input_ids"]
-                prefix_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
+                try:
+                    prefix_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
+                except IndexError:
+                    log.info('='*40 + f'bad example is: {text[: span[0]]}' + '='*40)
+                    raise IndexError(f'bad example is: {text[: span[0]]}')
                 prefix_and_span_tokens = tokenizer.encode_plus(text[: span[1]])["input_ids"]
                 token_span = (
                     shared_length(text_tokens, prefix_tokens),
