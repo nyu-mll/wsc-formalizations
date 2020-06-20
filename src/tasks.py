@@ -345,16 +345,33 @@ class WSCLikeTask(object):
 
             def realign_span(text, span):
                 text_tokens = tokenizer.encode_plus(text)["input_ids"]
-                try:
-                    prefix_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
-                except IndexError:
-                    log.info('='*40 + f'bad example is: {text[: span[0]]}' + '='*40)
-                    raise IndexError(f'bad example is: {text[: span[0]]}')
                 prefix_and_span_tokens = tokenizer.encode_plus(text[: span[1]])["input_ids"]
-                token_span = (
-                    shared_length(text_tokens, prefix_tokens),
-                    len(prefix_and_span_tokens) - 1,
-                )
+
+                if span[0] != 0:
+                    prefix_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
+                    token_span = (
+                        shared_length(text_tokens, prefix_tokens),
+                        len(prefix_and_span_tokens) - 1,
+                    )
+                else:
+                    token_span = (
+                        0,
+                        len(prefix_and_span_tokens) - 1,
+                    )
+
+                # ======================= DEBUG =======================
+                try:
+                    if span[0]==0:
+                        test_tokens = tokenizer.encode_plus(text[: span[0]])["input_ids"]
+                except IndexError:
+                    log.info('=' * 40 + f'bad example text: {text}' + '=' * 40)
+                    log.info('=' * 40 + f'bad example span: {span}' + '=' * 40)
+                    log.info('=' * 40 + f'bad example span[0]: {span[0]}' + '=' * 40)
+                    log.info('='*40 + f'bad example text[: span[0]]: {text[: span[0]]}' + '='*40)
+                    log.info('='*40 + f'token_span is: {token_span}' + '='*40)
+                    raise IndexError(f'bad example is: {text[: span[0]]}')
+                # ======================= DEBUG =======================
+
                 return text_tokens, token_span
 
             def char_span_to_mask(text, span):

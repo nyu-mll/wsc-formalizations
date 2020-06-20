@@ -1,0 +1,1 @@
+COMMAND="/scratch/wh629/nlu/projects/wsc/wsc-trick/src/main.py --exp-name winogrande-xl-option_MC-SENT-PAIR-QUAD_lr_1e-05_bs_32_max-epochs_40_seed_694859 --dataset winogrande-xl-option --framing MC-SENT-PAIR-QUAD --bs 32 --accumulation 16 --lr 1e-05 --max-epochs 40 --amp " sbatch /scratch/wh629/nlu/projects/wsc/wsc-trick/exp_control/wh629_quad.sbatch
