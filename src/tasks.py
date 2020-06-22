@@ -12,29 +12,6 @@ from fairseq_wsc.wsc_utils import (
     get_spacy_nlp,
 )
 
-# class QuadSampler(torch.utils.data.Sampler):
-#     def __init__(self, data_source, matched_indices, num_samples=None):
-#         super().__init__()
-#         self.data_source = data_source
-#         self._num_samples = num_samples
-#         self.matched_indices = matched_indices
-#         self.iter_match = []
-#         self.last_iter = 0
-#         self.matched = 0
-#
-#     def __iter__(self):
-#         n = len(self.data_source)
-#         if len(self.iter_match) > 0:
-#             self.last_iter = self.iter_match.pop()
-#         else:
-#             self.last_iter = iter(torch.randperm(n).tolist())
-#             self.iter_match = copy.deepcopy(self.matched_indices[self.last_iter])
-#
-#         return self.last_iter
-#
-#     def __len__(self):
-#         return self.num_samples
-
 class QuadBatchSampler(torch.utils.data.Sampler):
     def __init__(self, sampler, batch_size, drop_last, matched_indices):
         self.sampler = sampler
@@ -233,14 +210,6 @@ class WSCLikeTask(object):
                 global_ans_dict[key]["all_cands"].append(example["query_text"])
                 if example.get("p_label", False):
                     global_ans_dict[key]["correct_query"] = example["query_text"]
-
-            # temporary debug code
-            # temp = pd.Series(global_ans_dict).reset_index()
-            # temp_head, temp_tail = os.path.split(filename)
-            # temp_pre = temp_tail.split('.')[0]
-            # temp.to_json(f"/scratch/wh629/nlu/projects/wsc/{temp_pre}_temp.json")
-            # with open("/scratch/wh629/nlu/projects/wsc/temp.json", "w") as f:
-            #     f.write(json.dumps(global_ans_dict))
 
             for example_group in global_ans_dict.values():
                 correct_query = example_group["correct_query"]
@@ -538,27 +507,6 @@ class WSCLikeTask(object):
     def build_iterators(self, bs, framing):
         log.info("=" * 40 + " Building Loaders " + "=" * 40)
 
-        def match_indices(dict_data):
-            matches = {}
-
-            for i in range(len(dict_data)):
-                for j in range(i + 1, len(dict_data)):
-                    if i != j:
-                        i_uid, i_post = dict_data[i]['uid'].split('-')
-                        j_uid, j_post = dict_data[j]['uid'].split('-')
-
-                        if i_uid == j_uid:
-                            if matches.get(j, False):
-                                matches[i].append(j)
-                            else:
-                                matches[i] = [j]
-
-                            if matches.get(j, False):
-                                matches[j].append(i)
-                            else:
-                                matches[j] = [i]
-            return matches
-
         self.iterators = {
             split: torch.utils.data.DataLoader(
                 dataset=DictionaryDataset(data),
@@ -574,9 +522,19 @@ class WSCLikeTask(object):
 
         if "QUAD" in framing:
             log.info("="*40 + " Using Quad Loader " + "="*40)
-
             dict_data = DictionaryDataset(self.preprocessed_data["train"])
-            matched_indices = match_indices(dict_data)
+
+            if ("winogrande-xl" in self.dataset or "winogrande-l" in self.dataset):
+                matched_indices_cache = os.path.join(self.cache_dir,f"{self.dataset}-match.pkl")
+                log.info("="*40 + f" Large dataset. Load cached matching from: {matched_indices_cache} " + "="*40)
+
+                assert os.path.exists(matched_indices_cache), f"Matched indices cache does not exist: {matched_indices_cache}"
+
+                with open(matched_indices_cache, 'rb') as f:
+                    matched_indices = pickle.load(f)
+            else:
+                matched_indices = self.match_indices(dict_data)
+
             qsampler = QuadBatchSampler(
                 torch.utils.data.RandomSampler(dict_data),
                 batch_size = bs,
@@ -590,6 +548,38 @@ class WSCLikeTask(object):
                 pin_memory = True,
                 num_workers=4,
             )
+
+    def match_indices(self, dict_data):
+        matches = {}
+
+        for i in range(len(dict_data)):
+            for j in range(i + 1, len(dict_data)):
+                if i != j:
+                    i_uid, i_post = dict_data[i]['uid'].split('-')
+                    j_uid, j_post = dict_data[j]['uid'].split('-')
+
+                    if i_uid == j_uid:
+                        if matches.get(j, False):
+                            matches[i].append(j)
+                        else:
+                            matches[i] = [j]
+
+                        if matches.get(j, False):
+                            matches[j].append(i)
+                        else:
+                            matches[j] = [i]
+        return matches
+
+    def cache_matched(self):
+        log.info("=" * 40 + f" Matching and Caching {self.dataset} " + "=" * 40)
+        dict_data = DictionaryDataset(self.preprocessed_data["train"])
+        matched_indices = self.match_indices(dict_data)
+        matched_indices_cache = os.path.join(self.cache_dir, f"{self.dataset}-match.pkl")
+        with open(matched_indices_cache, 'wb') as f:
+            pickle.dump(matched_indices, f)
+        log.info("=" * 40 + f" Done caching. " + "=" * 40)
+        log.info("=" * 40 + f" Cached matched indices as: {matched_indices_cache} " + "=" * 40)
+
 
     def write_pred(self, pred, filename):
         if self.dataset.startswith("wsc"):
