@@ -9,7 +9,7 @@
 #SBATCH --mail-user=wh629@nyu.edu
 #SBATCH --mem=10000
 #SBATCH --job-name=wsc
-#SBATCH --output=/scratch/wh629/nlu/projects/wsc/%j.out
+#SBATCH --output=/scratch/wh629/nlu/projects/wsc/%j_winograde_m_single_MCSENTPAIR.out
 module purge
 module load anaconda3/5.3.1
 module load cuda/10.1.105
