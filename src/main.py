@@ -80,7 +80,7 @@ def main():
         trainer.load_model()
     if cfg.mode in ["eval", "train"]:
         pred = trainer.eval(split="test")["label_pred"]
-        task.write_pred(pred=pred, filename=os.path.join(cfg.results_dir, f"{cfg.exp_name}.submit"))
+        task.write_pred(pred=pred, filename=os.path.join(cfg.results_dir, f"{cfg.exp_name}.submit"), test=True)
         pred_val = trainer.eval(split="val")["label_pred"]
         task.write_pred(pred=pred_val, filename=os.path.join(cfg.results_dir, f"{cfg.exp_name}_val.submit"))
 

@@ -479,9 +479,10 @@ class WSCLikeTask(object):
             for split, data in self.preprocessed_data.items()
         }
 
-    def write_pred(self, pred, filename):
+    def write_pred(self, pred, filename, test = False):
         if self.dataset.startswith("wsc"):
-            assert len(pred) == 146
+            if test:
+                assert len(pred) == 146, f"Test responses is {len(pred)}"
             output = []
             for idx, one_pred in enumerate(pred):
                 assert len(one_pred) == 1, "multiple predictions"
