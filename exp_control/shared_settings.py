@@ -15,7 +15,7 @@ def decode_exp_name(exp_name):
     return dataset, framing, lr, bs, max_epochs, seed
 
 
-def make_command(dataset, framing, lr, bs, max_epochs, seed, gpu_capacity):
+def make_command(dataset, framing, lr, bs, max_epochs, seed, gpu_capacity, pretrained):
 
     exp_name = f"{encode_exp_name(dataset, framing, lr, bs, max_epochs, seed)}"
     accumulation = int(numpy.ceil(bs / gpu_capacity))
@@ -29,6 +29,7 @@ def make_command(dataset, framing, lr, bs, max_epochs, seed, gpu_capacity):
         f"--lr {lr} "
         f"--max-epochs {max_epochs} "
         f"--amp "
+        f"--pretrained {pretrained}"
     )
 
     return command

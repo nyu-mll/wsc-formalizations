@@ -18,7 +18,9 @@ def select_candidates(dataset):
     seed_range = 1e6
     lr = lr_candidates[random.randrange(0, len(lr_candidates), 1)]
     bs = bs_candidates[random.randrange(0, len(bs_candidates), 1)]
-    max_epochs = max_epochs_candidates[random.randrange(0, len(max_epochs_candidates), 1)]
+    max_epochs = max_epochs_candidates[
+        random.randrange(0, len(max_epochs_candidates), 1)
+    ]
     seed = random.randint(0, seed_range)
 
     return lr, bs, max_epochs, seed
@@ -31,7 +33,14 @@ def submit_trials(args):
         # select candidates for trial
         lr, bs, max_epochs, seed = select_candidates(args.dataset)
         command = make_command(
-            args.dataset, args.framing, lr, bs, max_epochs, seed, args.gpu_capacity
+            args.dataset,
+            args.framing,
+            lr,
+            bs,
+            max_epochs,
+            seed,
+            args.gpu_capacity,
+            args.pretrained,
         )
         sbatch_file = os.path.join(args.repo_dir, "exp_control", f"{args.user}.sbatch")
         jobs.append(f'COMMAND="{command}" sbatch {sbatch_file}\n')
@@ -53,7 +62,9 @@ if __name__ == "__main__":
         default=os.getenv("NLU_RESULTS_DIR", os.path.join(repo_dir, "results")),
     )
     parser.add_argument(
-        "--data-dir", type=str, default=os.getenv("NLU_DATA_DIR", os.path.join(repo_dir, "data"))
+        "--data-dir",
+        type=str,
+        default=os.getenv("NLU_DATA_DIR", os.path.join(repo_dir, "data")),
     )
     parser.add_argument("--user", type=str)
 
@@ -90,6 +101,7 @@ if __name__ == "__main__":
         ],
     )
     parser.add_argument("--gpu-capacity", type=int, default=8)
+    parser.add_argument("--pretrained", type=str, default="roberta-large")
 
     args = parser.parse_args()
     args.repo_dir = repo_dir
