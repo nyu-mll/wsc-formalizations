@@ -16,7 +16,9 @@ parser.add_argument(
 )
 # directory in which data are stored
 parser.add_argument(
-    "--data-dir", type=str, default=os.getenv("NLU_DATA_DIR", os.path.join(repo_dir, "data"))
+    "--data-dir",
+    type=str,
+    default=os.getenv("NLU_DATA_DIR", os.path.join(repo_dir, "data")),
 )
 # mode
 parser.add_argument("--mode", type=str, default="train", choices=["train", "eval"])
@@ -96,7 +98,14 @@ parser.add_argument(
     "--pretrained",
     type=str,
     default="roberta-large",
-    choices=["roberta-base", "roberta-large", "albert-base-v2", "albert-xxlarge-v2"],
+    choices=[
+        "roberta-base",
+        "roberta-large",
+        "albert-base-v2",
+        "albert-xxlarge-v2",
+        "bert-base-cased",
+        "bert-large-cased",
+    ],
 )
 
 

@@ -20,26 +20,34 @@ class WSCReframingModel(nn.Module):
 
         self.pad_logits = -100
 
-        self.tokenizer = transformers.RobertaTokenizer.from_pretrained(
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(
             pretrained, cache_dir=cache_dir
         )
         self.mask_token_id = self.tokenizer.mask_token_id
         self.pad_token_id = self.tokenizer.pad_token_id
 
-        transformer_with_lm = transformers.RobertaForMaskedLM.from_pretrained(
+        transformer_with_lm = transformers.AutoModelWithLMHead.from_pretrained(
             pretrained, cache_dir=cache_dir
         )
+
         self.hidden_size = transformer_with_lm.config.hidden_size
         self.pretrained = pretrained
         self.framing = framing
 
-        self.transformer = transformer_with_lm.roberta
+        if pretrained.startswith("roberta"):
+            self.transformer = transformer_with_lm.roberta
+        elif pretrained.startswith("bert"):
+            self.transformer = transformer_with_lm.bert
+
         if "-SPAN" in self.framing:
             self.span_head = nn.Linear(3 * self.hidden_size, 1)
         elif "-SENT" in self.framing:
             self.sent_head = nn.Linear(self.hidden_size, 1)
         elif "-MLM" in self.framing:
-            self.mlm_head = transformer_with_lm.lm_head
+            if pretrained.startswith("roberta"):
+                self.mlm_head = transformer_with_lm.lm_head
+            elif pretrained.startswith("bert"):
+                self.mlm_head = transformer_with_lm.cls
 
     def forward(self, batch_inputs, test=False):
         """
@@ -95,10 +103,15 @@ class WSCReframingModel(nn.Module):
             query_repr = use_transformer(batch_inputs["split_query_input"])[0][:, 0]
             query_logits = self.sent_head(query_repr).squeeze(dim=-1)
 
-            if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT"]:
-                valid_cand_mask = (batch_inputs["split_cand_input"] != self.pad_token_id).max(
-                    dim=2
-                )[0]
+            if self.framing in [
+                "MC-SENT-PLOSS",
+                "MC-SENT-PAIR",
+                "MC-SENT-SCALE",
+                "MC-SENT",
+            ]:
+                valid_cand_mask = (
+                    batch_inputs["split_cand_input"] != self.pad_token_id
+                ).max(dim=2)[0]
                 if not torch.all(valid_cand_mask == 0):
                     cand_input = batch_inputs["split_cand_input"][valid_cand_mask]
                     cand_repr = use_transformer(cand_input)[0][:, 0]
@@ -114,9 +127,13 @@ class WSCReframingModel(nn.Module):
             query_mask = (batch_inputs["mask_query_input"] == self.mask_token_id).to(
                 query_prob.dtype
             )[:, :max_seq_len]
-            query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(dim=1)
+            query_logits = torch.sum(query_prob * query_mask, dim=1) / query_mask.sum(
+                dim=1
+            )
 
-            valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(dim=2)[0]
+            valid_cand_mask = (batch_inputs["cand_input"] != self.pad_token_id).max(
+                dim=2
+            )[0]
             if not torch.all(valid_cand_mask == 0):
                 mask_cand_input = batch_inputs["mask_cand_input"][valid_cand_mask]
                 cand_input = batch_inputs["cand_input"][valid_cand_mask]
@@ -129,21 +146,32 @@ class WSCReframingModel(nn.Module):
                 cand_mask = (mask_cand_input == self.mask_token_id).to(cand_prob.dtype)[
                     :, :max_seq_len
                 ]
-                cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(dim=1)
+                cand_logits = torch.sum(cand_prob * cand_mask, dim=1) / cand_mask.sum(
+                    dim=1
+                )
         else:
             raise NotImplementedError
 
         # query_logits: (bs,)
-        if self.framing in ["MC-SENT-PLOSS", "MC-SENT-PAIR", "MC-SENT-SCALE", "MC-SENT", "MC-MLM"]:
+        if self.framing in [
+            "MC-SENT-PLOSS",
+            "MC-SENT-PAIR",
+            "MC-SENT-SCALE",
+            "MC-SENT",
+            "MC-MLM",
+        ]:
             if not torch.all(valid_cand_mask == 0):
                 # cand_logits: (batch_cand_count,)
                 full_cand_logits = (
-                    torch.ones_like(valid_cand_mask.to(cand_logits.dtype)) * self.pad_logits
+                    torch.ones_like(valid_cand_mask.to(cand_logits.dtype))
+                    * self.pad_logits
                 )
                 full_cand_logits[valid_cand_mask] = cand_logits
                 # full_cand_logits: (bs, max_cands)
             else:
-                full_cand_logits = torch.ones_like(query_logits.unsqueeze(dim=1)) * self.pad_logits
+                full_cand_logits = (
+                    torch.ones_like(query_logits.unsqueeze(dim=1)) * self.pad_logits
+                )
 
         if self.training:
             if self.framing in ["P-SPAN", "P-SENT", "MC-SENT-PLOSS"]:
@@ -157,21 +185,29 @@ class WSCReframingModel(nn.Module):
                     batch_inputs["mc_label"],
                 )
             elif self.framing in ["MC-SENT-PAIR"]:
-                concat_logits = torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits], dim=1)
+                concat_logits = torch.cat(
+                    [query_logits.unsqueeze(dim=1), full_cand_logits], dim=1
+                )
                 one_hot_label = torch.zeros_like(concat_logits).long()
                 one_hot_label[
-                    torch.arange(len(batch_inputs["mc_label"])), batch_inputs["mc_label"]
+                    torch.arange(len(batch_inputs["mc_label"])),
+                    batch_inputs["mc_label"],
                 ] = 1
                 non_pad_mask = concat_logits != self.pad_logits
                 non_pad_logits = concat_logits[non_pad_mask]
                 non_pad_label = one_hot_label[non_pad_mask]
                 loss = F.cross_entropy(
-                    torch.stack([torch.zeros_like(non_pad_logits), non_pad_logits], dim=-1),
+                    torch.stack(
+                        [torch.zeros_like(non_pad_logits), non_pad_logits], dim=-1
+                    ),
                     non_pad_label,
                 )
             elif self.framing in ["MC-SENT-SCALE"]:
                 loss = F.cross_entropy(
-                    torch.cat([query_logits.unsqueeze(dim=1), full_cand_logits.detach()], dim=1),
+                    torch.cat(
+                        [query_logits.unsqueeze(dim=1), full_cand_logits.detach()],
+                        dim=1,
+                    ),
                     batch_inputs["mc_label"],
                 )
             else:
