@@ -1,14 +1,3 @@
-WIP readme
+Shared code used for our team project in DS-GA 1012: Natural Language Understanding and Computational Semantics, Spring 2020 at NYU.
 
-# Setup
-
-0. Clone the reprository 
-` git clone https://github.com/HaokunLiu/wsc-trick.git `
-1. Create an environment from environment.yml
-` conda env create -f environment.yml `
-2. Activate the environment
-` conda activate wsc `
-3. Download some spacy stuff
-` python -m spacy download en_core_web_lg ` 
-4. WSC data can be downloaded [here](https://super.gluebenchmark.com/tasks), Winogrande data can be downloaded [here](https://mosaic.allenai.org/projects/winogrande) 
-5. (optional) Follow [instructions](https://github.com/NVIDIA/apex) to install apex.
+Please go to the `code_release` branch for the official code release and reproducing instructions of our paper "Precise Task Formalization Matters in Winograd Schema Evaluations"
