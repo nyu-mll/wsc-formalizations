@@ -20,3 +20,7 @@ This repository is the code release for our paper "Precise Task Formalization Ma
 # Reproducing results
 
 To finetuning a single model use `main.py` in `src`, to run hyperparameter searching of one formalization use `hyper_parameter_tuning.py` in `exp_control`
+
+# Recommanded citation
+
+Stay tuned for update.
